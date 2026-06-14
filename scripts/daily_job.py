@@ -95,11 +95,71 @@ def main():
     selected = rank_and_select(filtered, max_items)
     print(f"✅ 初步选取 {len(selected)} 条")
 
-    # ====== 步骤3: p.3.cn 实时查价 ======
+    # ====== 步骤3: 解析真实SKU并修正链接 ======
+    print("\n🔗 解析真实商品链接...")
+    for item in selected:
+        material_url = item.get("link", "")
+        if material_url and "jingfen.jd.com" in material_url:
+            real_sku = api.resolve_real_sku(material_url)
+            if real_sku:
+                old_link = item["link"]
+                item["link"] = f"https://item.jd.com/{real_sku}.html"
+                item["sku_id"] = real_sku
+                print(f"  ✅ {item['title'][:30]}... → {real_sku}")
+            else:
+                print(f"  ⚠️ 无法解析: {item['title'][:30]}...")
+            time.sleep(0.3)
+        else:
+            # 已经是 item.jd.com 格式
+            print(f"  ✓ {item['title'][:30]}... (已是正确格式)")
+
+    # ====== 步骤4: 验证商品是否在售 ======
+    print("\n✅ 验证商品是否在售...")
+    sku_ids = [item.get("sku_id", "") for item in selected if item.get("sku_id")]
+    status = api.verify_item_status(sku_ids)
+    valid_items = []
+    for item in selected:
+        sid = item.get("sku_id", "")
+        if sid and status.get(sid, False):
+            valid_items.append(item)
+            print(f"  ✅ {item['title'][:30]}... 在售")
+        else:
+            print(f"  ❌ {item['title'][:30]}... 已下架，剔除")
+    selected = valid_items
+    print(f"  在售商品: {len(selected)} 条")
+
+    # 如果剔除后不足10条，从候补中补齐
+    if len(selected) < max_items:
+        remaining = [r for r in filtered if r not in selected and r.get("sku_id") and status.get(r["sku_id"], False)]
+        need = max_items - len(selected)
+        for r in remaining[:need]:
+            selected.append(r)
+            print(f"  ✅ 候补: {r['title'][:30]}...")
+    print(f"  最终选取: {len(selected)} 条")
+
+    # ====== 步骤5: 转链（带推广位） ======
+    if site_id:
+        print("\n🔗 生成推广链接...")
+        for item in selected:
+            original_link = item.get("link", "")
+            if not original_link:
+                continue
+            promo_link = api.get_promotion_link(original_link, site_id)
+            if promo_link:
+                item["link"] = promo_link
+                print(f"  ✅ {item['title'][:25]}... → 推广短链")
+            else:
+                pass  # 转链不可用，保持 item.jd.com 链接
+    else:
+        print("\n⚠️ site_id 未配置，跳过转链")
+
+    # ====== 步骤5: p.3.cn 实时查价（网络可能不通，降级用API价格） ======
     print("\n💰 查询实时价格...")
     sku_ids = [item.get("sku_id", "") for item in selected if item.get("sku_id")]
     real_prices = api.get_real_price(sku_ids)
     print(f"  获取到 {len(real_prices)} 个实时价格")
+    if not real_prices:
+        print("  ⚠️ p.3.cn 不通，使用京粉API价格（priceInfo.price 即页面价）")
 
     # 用实时价格更新
     for item in selected:

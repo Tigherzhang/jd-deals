@@ -112,6 +112,37 @@ class JdUnionAPI:
                 print(f"  [频道{elite_id}] API 返回错误: {msg}")
         return []
 
+    def resolve_real_sku(self, material_url):
+        """
+        从 jingfen.jd.com/detail/xxx 链接302跳转中获取真实的 item.jd.com SKU ID
+        京粉API的 spuid 不是 item.jd.com 的纯数字SKU，必须通过跳转获取
+        """
+        import re, http.client
+        if not material_url:
+            return ""
+        try:
+            url = material_url
+            if not url.startswith("http"):
+                url = "https://" + url
+            # 去掉协议部分
+            path = url.replace("https://jingfen.jd.com/", "").replace("http://jingfen.jd.com/", "")
+            if not path.startswith("/"):
+                path = "/" + path
+
+            conn = http.client.HTTPSConnection("jingfen.jd.com", timeout=10)
+            conn.request("GET", path)
+            resp = conn.getresponse()
+            location = resp.getheader("Location", "")
+            conn.close()
+
+            # 从 ReturnUrl= 或直接跳转中提取真实SKU
+            sku_match = re.search(r'item\.jd\.com/(\d+)\.html', location)
+            if sku_match:
+                return sku_match.group(1)
+        except Exception as e:
+            print(f"  [SKU解析] 失败: {e}")
+        return ""
+
     def get_promotion_link(self, material_url, site_id, sub_union_id=""):
         """
         将原始链接转为带推广佣金的短链接
@@ -141,6 +172,25 @@ class JdUnionAPI:
                     except json.JSONDecodeError:
                         pass
         return ""
+
+    def verify_item_status(self, sku_ids):
+        """
+        验证商品是否在售（未被下架）
+        通过访问 item.jd.com/{sku}.html 检查是否跳转到首页
+        返回 {sku_id: True/False}
+        """
+        import urllib.error
+        results = {}
+        for sku in sku_ids:
+            try:
+                url = f"https://item.jd.com/{sku}.html"
+                req = urllib.request.Request(url)
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    final = resp.url
+                    results[sku] = "jd.com/?d" not in final
+            except Exception:
+                results[sku] = False
+        return results
 
     def get_real_price(self, sku_ids):
         """
