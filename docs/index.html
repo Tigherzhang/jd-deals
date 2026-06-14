@@ -2,33 +2,34 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>京东优惠精选</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#f5f5f5; color:#333; max-width:500px; margin:0 auto; min-height:100vh; }
-.header { background: linear-gradient(135deg, #e4393c, #c0392b); color:white; padding:20px 16px; text-align:center; }
-.header h1 { font-size:22px; margin-bottom:4px; }
-.header .date { font-size:13px; opacity:0.85; }
-.product-card { background:white; margin:12px 12px; border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
-.product-name { font-size:16px; font-weight:600; margin-bottom:10px; line-height:1.4; }
-.price-row { display:flex; align-items:baseline; gap:12px; margin-bottom:10px; }
-.orig-price { font-size:13px; color:#999; text-decoration:line-through; }
-.final-price { font-size:26px; color:#e4393c; font-weight:700; }
-.tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-.tag { font-size:11px; padding:2px 8px; border-radius:10px; background:#fff3f3; color:#e4393c; }
-.tag.green { background:#e8f5e9; color:#2e7d32; }
-.tag.orange { background:#fff8e1; color:#f57f17; }
-.meta { font-size:12px; color:#999; margin-bottom:12px; }
-.btn-row { display:flex; gap:8px; }
-.btn { flex:1; padding:10px; border-radius:8px; border:none; font-size:14px; cursor:pointer; text-align:center; transition: transform 0.1s, opacity 0.2s; }
-.btn:active { transform:scale(0.96); }
-.btn-copy { background:#e4393c; color:white; }
-.btn-coupon { background:#fff; color:#e4393c; border:1.5px solid #e4393c; }
-.toast { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); color:white; padding:12px 24px; border-radius:8px; font-size:15px; pointer-events:none; opacity:0; transition:opacity 0.3s; z-index:999; }
-.toast.show { opacity:1; }
-.footer { text-align:center; padding:20px; color:#999; font-size:12px; }
-.loading { text-align:center; padding:60px 20px; color:#999; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;color:#333;max-width:500px;margin:0 auto;min-height:100vh;padding-bottom:30px}
+.header{background:linear-gradient(135deg,#e4393c,#c0392b);color:#fff;padding:18px 16px;text-align:center;position:sticky;top:0;z-index:10}
+.header h1{font-size:20px;margin-bottom:2px}
+.header .date{font-size:12px;opacity:.85}
+.product-card{background:#fff;margin:10px 10px;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.product-name{font-size:15px;font-weight:600;margin-bottom:8px;line-height:1.4}
+.price-row{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.orig-price{font-size:12px;color:#999;text-decoration:line-through}
+.final-price{font-size:24px;color:#e4393c;font-weight:700}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.tag{font-size:10px;padding:2px 7px;border-radius:10px;background:#fff3f3;color:#e4393c}
+.tag.green{background:#e8f5e9;color:#2e7d32}
+.meta{font-size:11px;color:#999;margin-bottom:10px}
+.btn-row{display:flex;gap:6px}
+.btn{flex:1;padding:10px 6px;border-radius:8px;border:none;font-size:13px;cursor:pointer;text-align:center;transition:transform .1s;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.96)}
+.btn-copy{background:#e4393c;color:#fff}
+.btn-coupon{background:#fff;color:#e4393c;border:1.5px solid #e4393c}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.8);color:#fff;padding:12px 24px;border-radius:8px;font-size:15px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:999}
+.toast.show{opacity:1}
+.footer{text-align:center;padding:20px 10px;color:#999;font-size:11px}
+.footer a{color:#999}
+.loading{text-align:center;padding:60px 20px;color:#999;font-size:15px}
+.empty{padding:50px 20px;text-align:center;color:#999}
 </style>
 </head>
 <body>
@@ -36,102 +37,65 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
   <h1>🛒 京东优惠精选</h1>
   <div class="date" id="dateDisplay">加载中...</div>
 </div>
-<div id="content">
-  <div class="loading">⏳ 加载商品中...</div>
-</div>
+<div id="content"><div class="loading">⏳ 加载商品中...</div></div>
 <div class="footer">
   <p>⏰ 更新时间：<span id="updateTime">--</span></p>
-  <p>🔔 每日更新 · 商品价格以实际为准</p>
+  <p>每日更新 · 商品价格以实际为准 · <a href="https://github.com/Tigherzhang/jd-pcs">GitHub</a></p>
 </div>
 <div class="toast" id="toast"></div>
-
 <script>
-async function loadData() {
-  try {
-    const resp = await fetch('data.json?t=' + Date.now());
-    const data = await resp.json();
+async function loadData(){
+  try{
+    const resp=await fetch('data.json?t='+Date.now());
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const data=await resp.json();
     render(data);
-  } catch(e) {
-    document.getElementById('content').innerHTML = '<div class="loading">❌ 加载失败，请稍后重试</div>';
+  }catch(e){
+    document.getElementById('content').innerHTML='<div class="empty">❌ 加载失败，请稍后刷新</div>';
+    console.error(e);
   }
 }
-
-function render(data) {
-  const now = new Date();
-  const weekDay = ['日','一','二','三','四','五','六'][now.getDay()];
-  document.getElementById('dateDisplay').textContent =
-    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 周${weekDay}`;
-  document.getElementById('updateTime').textContent = data.update_time || '--';
-
-  if (!data.items || data.items.length === 0) {
-    document.getElementById('content').innerHTML = '<div class="loading">📭 暂无优惠商品，请稍后再来</div>';
+function render(data){
+  const now=new Date();
+  const wd=['日','一','二','三','四','五','六'][now.getDay()];
+  document.getElementById('dateDisplay').textContent=now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 周'+wd;
+  document.getElementById('updateTime').textContent=data.update_time||'--';
+  if(!data.items||data.items.length===0){
+    document.getElementById('content').innerHTML='<div class="empty">📭 暂无优惠商品<br><small>请稍后再来看看</small></div>';
     return;
   }
-
-  let html = '';
-  data.items.forEach((item, i) => {
-    html += `<div class="product-card">
-      <div class="product-name">${item.emoji || '📦'} ${item.title}</div>
-      <div class="price-row">
-        ${item.orig_price ? `<span class="orig-price">¥${item.orig_price}</span>` : ''}
-        <span class="final-price">💰 ¥${item.price}</span>
-      </div>`;
-
-    if (item.tags && item.tags.length > 0) {
-      html += '<div class="tags">';
-      item.tags.forEach(t => {
-        let cls = 'tag';
-        if (t.includes('好评') || t.includes('销量')) cls += ' green';
-        else if (t.includes('券') || t.includes('9.9') || t.includes('秒杀')) cls += ' orange';
-        html += `<span class="${cls}">${t}</span>`;
+  let html='';
+  data.items.forEach(item=>{
+    html+='<div class="product-card"><div class="product-name">'+item.emoji+' '+item.title+'</div><div class="price-row">';
+    if(item.orig_price)html+='<span class="orig-price">¥'+item.orig_price+'</span>';
+    html+='<span class="final-price">💰 ¥'+item.price+'</span></div>';
+    if(item.tags&&item.tags.length){
+      html+='<div class="tags">';
+      item.tags.forEach(t=>{
+        let cls='tag';
+        if(t.includes('好评')||t.includes('销量'))cls+=' green';
+        html+='<span class="'+cls+'">'+t+'</span>';
       });
-      html += '</div>';
+      html+='</div>';
     }
-
-    if (item.meta) {
-      html += `<div class="meta">${item.meta}</div>`;
-    }
-
-    html += '<div class="btn-row">';
-    html += `<button class="btn btn-copy" onclick="copyText('${item.link}')">📋 复制商品链接</button>`;
-    if (item.coupon_link) {
-      html += `<button class="btn btn-coupon" onclick="copyText('${item.coupon_link}')">🎫 领券</button>`;
-    }
-    html += '</div></div>';
+    if(item.meta)html+='<div class="meta">'+item.meta+'</div>';
+    html+='<div class="btn-row"><button class="btn btn-copy" onclick="copyText(\''+item.link.replace(/'/g,"\\'")+'\')">📋 复制链接</button>';
+    if(item.coupon_link)html+='<button class="btn btn-coupon" onclick="copyText(\''+item.coupon_link.replace(/'/g,"\\'")+'\')">🎫 领券</button>';
+    html+='</div></div>';
   });
-
-  if (data.total !== undefined) {
-    html += `<div style="text-align:center;padding:8px;color:#999;font-size:13px;">共 ${data.total} 条优惠商品</div>`;
-  }
-
-  document.getElementById('content').innerHTML = html;
+  html+='<div style="text-align:center;padding:8px;color:#999;font-size:12px">共 '+data.total+' 条优惠商品</div>';
+  document.getElementById('content').innerHTML=html;
 }
-
-async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast('✅ 已复制链接！');
-  } catch(e) {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('✅ 已复制链接！');
-  }
+async function copyText(text){
+  try{await navigator.clipboard.writeText(text);showToast('✅ 已复制链接！');return;}catch(e){}
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
+  document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+  showToast('✅ 已复制链接！');
 }
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 1500);
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},1500);
 }
-
 loadData();
 </script>
 </body>

@@ -158,19 +158,19 @@ def rank_and_select(items, max_items=10):
     # 按评分降序
     items.sort(key=lambda x: x.get("_score", 0), reverse=True)
 
-    # Filter: only items with real discount (coupon_amount > 0 or price < orig_price)
+    # 必须真的有优惠（原价>到手价，说明有折扣）
     real_deals = []
     for item in items:
-        has_coupon = item.get("coupon_amount", 0) > 0
-        has_discount = item.get("orig_price", 0) > item.get("price", 0)
-        if has_coupon or has_discount:
+        orig = item.get("orig_price", 0)
+        price = item.get("price", 0)
+        if orig > price and orig > 0:
             real_deals.append(item)
 
-    # 品类多样性：同一品类最多3条
+    # 品类多样性
     cat_count = {}
     selected = []
 
-    # First pass: pick 3 food, 3 home items
+    # 优先食品、日用品各3条
     for cat in ["食品", "日用品"]:
         cnt = 0
         for item in real_deals:
@@ -181,17 +181,12 @@ def rank_and_select(items, max_items=10):
                     break
         cat_count[cat] = cnt
 
-    # Second pass: fill remaining slots from all categories
+    # 补齐到10条
     for item in real_deals:
         if len(selected) >= max_items:
             break
-        if item in selected:
-            continue
-        cat = item.get("category", "其他")
-        if cat_count.get(cat, 0) >= 3:
-            continue
-        selected.append(item)
-        cat_count[cat] = cat_count.get(cat, 0) + 1
+        if item not in selected:
+            selected.append(item)
 
     # 移除评分字段
     for item in selected:
