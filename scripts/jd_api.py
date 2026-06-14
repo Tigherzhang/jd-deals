@@ -112,25 +112,72 @@ class JdUnionAPI:
                 print(f"  [频道{elite_id}] API 返回错误: {msg}")
         return []
 
-    def fetch_promotion_info(self, sku_ids):
-        """获取商品推广信息（佣金、优惠券等）"""
+    def get_promotion_link(self, material_url, site_id, sub_union_id=""):
+        """
+        将原始链接转为带推广佣金的短链接
+        调用 jd.union.open.promotion.common.get 接口
+        """
         params = {
-            "skuIds": ",".join(str(s) for s in sku_ids[:50])
+            "promotionCodeReq": {
+                "materialId": material_url,
+                "siteId": site_id,
+                "subUnionId": sub_union_id,
+            }
         }
-        result = self._request("jd.union.open.goods.promotiongoodsinfo.query", params)
+        result = self._request("jd.union.open.promotion.common.get", params)
         if result:
-            resp_key = "jd_union_open_goods_promotiongoodsinfo_query_response"
+            resp_key = "jd_union_open_promotion_common_get_response"
+            # 兼容两种响应格式
+            if "jd_union_open_promotion_common_get_responce" in result:
+                resp_key = "jd_union_open_promotion_common_get_responce"
             if resp_key in result:
                 resp_data = result[resp_key]
-                if str(resp_data.get("code")) == "0":
-                    return resp_data.get("data", [])
-        return []
+                code = resp_data.get("code")
+                if code == "0" or str(code) == "0":
+                    qr_str = resp_data.get("queryResult", resp_data.get("result", "{}"))
+                    try:
+                        qr = json.loads(qr_str) if isinstance(qr_str, str) else qr_str
+                        return qr.get("shortURL") or qr.get("clickURL", "")
+                    except json.JSONDecodeError:
+                        pass
+        return ""
 
-    def convert_to_item(self, raw, elite_id=None):
-        """将API原始数据转换为统一的商品格式"""
+    def get_real_price(self, sku_ids):
+        """
+        通过 p.3.cn 接口获取京东实时页面价
+        返回 {sku_id: real_price}
+        """
+        if not sku_ids:
+            return {}
         try:
-            # 从实际API响应中提取数据
-            sku_id = raw.get("spuid") or raw.get("skuId") or raw.get("itemId") or ""
+            ids_str = ",".join([f"J_{s}" for s in sku_ids])
+            url = f"https://p.3.cn/prices/mgets?skuIds={ids_str}"
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0",
+                "Referer": "https://item.jd.com/",
+            })
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+                result = {}
+                for d in data:
+                    sid = d.get("id", "").replace("J_", "")
+                    price_str = d.get("p", "0")
+                    result[sid] = float(price_str)
+                return result
+        except Exception as e:
+            print(f"  [价格查询] p.3.cn 失败: {e}")
+            return {}
+
+    def convert_to_item(self, raw, elite_id=None, real_prices=None):
+        """将API原始数据转换为统一的商品格式, real_prices为p.3.cn实时价"""
+        if real_prices is None:
+            real_prices = {}
+        try:
+            # spuId 是纯数字的SKU ID（如 10034608353023），用于 p.3.cn 查价和 item.jd.com 链接
+            pure_sku = str(raw.get("spuid") or raw.get("skuId") or "")
+
+            # itemId 是京东新的动态ID（如 jwQitWLNQeTXqcT0gXmbXqcT0gXmbQ_...），用于联盟推广
+            item_id = raw.get("itemId") or ""
 
             # 商品标题
             title = raw.get("skuName") or raw.get("goodsName") or "未知商品"
@@ -153,25 +200,33 @@ class JdUnionAPI:
             coupon_amount = best_coupon.get("discount", 0) if best_coupon else 0
             coupon_link = best_coupon.get("link", "") if best_coupon else ""
 
-            # 原价：purchasePriceInfo.thresholdPrice 是需要满足的金额门槛（=商品原价）
-            # 到手价：purchasePriceInfo.purchasePrice 是券后实际到手价
+            # 购买信息
             purchase_info = raw.get("purchasePriceInfo") or {}
-            orig_price = purchase_info.get("thresholdPrice", 0) or price
-            purchase_price = purchase_info.get("purchasePrice", 0)
+            threshold_price = purchase_info.get("thresholdPrice", 0)  # 满减门槛
+            purchase_price = purchase_info.get("purchasePrice", 0)    # 券后到手价
 
-            # 选择显示价格：有券用券后价，没券用普通价
-            if purchase_price > 0 and lowest_coupon_price > 0:
-                actual_price = min(purchase_price, lowest_coupon_price)
-            elif purchase_price > 0:
-                actual_price = purchase_price
-            elif lowest_coupon_price > 0:
-                actual_price = lowest_coupon_price
+            # 用 p.3.cn 实时价格
+            real_price = real_prices.get(pure_sku, 0) if pure_sku else 0
+
+            # 显示价格：p.3.cn实时价 > priceInfo.price
+            display_price = real_price if real_price > 0 else price
+
+            # 券后到手价
+            coupon_price = None
+            if coupon_amount > 0:
+                coupon_price = max(display_price - coupon_amount, 0)
+                if lowest_coupon_price > 0 and lowest_coupon_price < coupon_price:
+                    coupon_price = lowest_coupon_price
+                if purchase_price > 0 and purchase_price < coupon_price:
+                    coupon_price = purchase_price
+
+            # 原价
+            if threshold_price > 0 and threshold_price > display_price:
+                orig_price = threshold_price
+            elif real_price > 0 and price > real_price:
+                orig_price = price
             else:
-                actual_price = price
-
-            # 没券时原价不显示（因为没有优惠）
-            if coupon_amount <= 0 and orig_price == price:
-                orig_price = price * 1.5  # 给一个估算的折扣显示
+                orig_price = display_price + coupon_amount if coupon_amount else display_price * 1.3
 
             # 佣金
             commission_info = raw.get("commissionInfo") or {}
@@ -179,48 +234,40 @@ class JdUnionAPI:
             commission_ratio = commission_info.get("commissionShare", 0)
 
             # 评价
-            good_rate = raw.get("goodCommentsShare", 0)  # 实际字段名
-            comments = raw.get("comments", 0)  # 评论数
+            good_rate = raw.get("goodCommentsShare", 0)
+            comments = raw.get("comments", 0)
 
             # 销量
             sales_30d = raw.get("inOrderCount30DaysSku") or raw.get("inOrderCount30Days", 0)
 
-            # 链接
-            material_url = raw.get("materialUrl") or ""
-            if material_url and not material_url.startswith("http"):
-                material_url = f"https://{material_url}"
+            # 链接 - 用纯数字SKU构建 item.jd.com 格式
+            if pure_sku:
+                material_url = f"https://item.jd.com/{pure_sku}.html"
+            else:
+                material_url = raw.get("materialUrl") or ""
+                if material_url and not material_url.startswith("http"):
+                    material_url = f"https://{material_url}"
 
-            # 分类 - 使用京东三级类目名称
+            # 分类
             cat_info = raw.get("categoryInfo") or {}
-            cid1 = cat_info.get("cid1Name", "")
-            cid2 = cat_info.get("cid2Name", "")
-            cid3 = cat_info.get("cid3Name", "")
-            all_cats = f"{cid1}{cid2}{cid3}"
+            all_cats = (cat_info.get("cid1Name", "") + cat_info.get("cid2Name", "") + cat_info.get("cid3Name", ""))
 
-            # 食品类关键词
-            food_kw = ["食品", "零食", "饮料", "生鲜", "水果", "乳品", "粮油", "调味", "茗茶", "酒", "预制菜", "方便食品", "坚果", "糖果", "饼干", "糕点", "肉干", "蜜饯", "烘焙", "冲饮", "咖啡", "牛奶", "酸奶", "冰淇淋", "海鲜", "水产", "蛋", "蔬菜", "速食", "面条", "米", "油", "酱", "醋", "鸡", "鸭", "鱼", "虾", "牛肉", "猪肉", "粽子", "月饼", "汤圆", "水饺", "包子", "馒头", "火腿", "腊肉", "罐头", "调味酱"]
-            home_kw = ["家居", "日用", "清洁", "家纺", "收纳", "洗衣", "纸巾", "拖把", "扫把", "洗浴", "沐浴", "洗发", "牙刷", "牙膏", "毛巾", "浴巾", "拖鞋", "衣架", "垃圾袋", "保鲜袋", "密封袋", "挂钩", "置物架", "抹布", "百洁布", "洗衣液", "洗洁精", "消毒液", "空气清新", "除味", "驱蚊", "灭蚊", "杀蟑", "粘鼠板", "洗涤", "柔顺剂", "洗手液"]
-            fruit_kw = ["水果", "苹果", "香蕉", "橙", "橘子", "柚子", "葡萄", "西瓜", "哈密瓜", "芒果", "猕猴桃", "草莓", "蓝莓", "樱桃", "荔枝", "龙眼", "榴莲", "山竹", "柿子", "桃", "枣", "火龙果", "百香果", "柠檬", "石榴"]
+            food_kw = ["食品", "零食", "饮料", "生鲜", "水果", "乳品", "粮油", "调味", "茗茶", "酒", "预制菜", "方便食品", "坚果", "糖果", "饼干", "糕点", "肉干", "蜜饯", "烘焙", "冲饮", "咖啡", "牛奶", "酸奶", "冰淇淋", "海鲜", "水产", "蛋", "蔬菜", "速食", "面条", "米", "油", "酱", "醋", "鸡", "鸭", "鱼", "虾", "牛肉", "猪肉", "粽子", "火腿", "腊肉", "罐头"]
+            home_kw = ["家居", "日用", "清洁", "家纺", "收纳", "洗衣", "纸巾", "拖把", "扫把", "洗浴", "沐浴", "洗发", "牙刷", "牙膏", "毛巾", "浴巾", "拖鞋", "衣架", "垃圾袋", "保鲜袋", "密封袋", "挂钩", "置物架", "抹布", "洗衣液", "洗洁精", "消毒液", "驱蚊", "灭蚊", "洗手液", "家清", "个护"]
 
             category = "其他"
-            if any(kw in all_cats for kw in food_kw) or any(kw in title for kw in ["零食", "牛肉干", "猪肉脯", "卤味", "花生", "瓜子", "锅巴"]):
+            if any(kw in all_cats for kw in food_kw) or any(kw in title for kw in ["零食", "牛肉干", "猪肉脯", "卤味", "花生", "瓜子"]):
                 category = "食品"
-            elif any(kw in all_cats for kw in fruit_kw):
+            elif any(kw in title for kw in ["水果", "苹果", "香蕉", "橙", "猕猴桃", "芒果", "火龙果"]):
                 category = "水果/生鲜"
-            elif any(kw in all_cats for kw in home_kw) or any(kw in title for kw in ["洗衣", "纸巾", "纸巾", "牙刷", "牙膏", "沐浴", "洗发", "驱蚊", "垃圾袋"]):
+            elif any(kw in all_cats for kw in home_kw) or any(kw in title for kw in ["洗衣", "纸巾", "牙刷", "牙膏", "沐浴", "洗发", "驱蚊"]):
                 category = "日用品"
-            elif "家清" in all_cats or "个护" in all_cats:
-                category = "日用品"
-
-            # 计算券后价
-            actual_price = lowest_coupon_price if lowest_coupon_price > 0 else price
-            if not actual_price or actual_price <= 0:
-                actual_price = price
 
             return {
-                "sku_id": str(sku_id),
+                "sku_id": pure_sku or item_id,
                 "title": title,
-                "price": float(actual_price) if actual_price else 0,
+                "price": float(display_price) if display_price else 0,
+                "coupon_price": float(coupon_price) if coupon_price else 0,
                 "orig_price": float(orig_price) if orig_price else 0,
                 "coupon_amount": float(coupon_amount) if coupon_amount else 0,
                 "commission": float(commission) if commission else 0,
@@ -230,7 +277,6 @@ class JdUnionAPI:
                 "sales_30d": int(sales_30d) if sales_30d else 0,
                 "link": material_url,
                 "coupon_link": str(coupon_link) if coupon_link else "",
-                "image_url": "",
                 "category": category,
                 "channel": elite_id,
             }

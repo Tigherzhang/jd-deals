@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 京东副业 PCS - 每日主脚本
-获取优惠商品 → 筛选 → 生成网页 → git push
+获取优惠商品 → 实时查价 → 转链 → 筛选 → 生成网页 → git push
 """
 import json
 import os
@@ -9,7 +9,6 @@ import sys
 import subprocess
 import time
 
-# 添加 scripts 目录到 path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, SCRIPT_DIR)
@@ -20,7 +19,6 @@ from page_generator import generate_data, save_data
 
 
 def load_config():
-    """加载配置文件"""
     config_path = os.path.join(PROJECT_DIR, "config.json")
     if not os.path.exists(config_path):
         print(f"[✗] 配置文件不存在: {config_path}")
@@ -30,22 +28,15 @@ def load_config():
 
 
 def git_push(repo_dir):
-    """将更改推送到 GitHub"""
     try:
-        # git add
         subprocess.run(["git", "-C", repo_dir, "add", "docs/data.json"], check=True, timeout=10)
-
-        # git commit
         today = time.strftime("%Y-%m-%d")
         msg = f"更新商品数据 {today}"
         result = subprocess.run(["git", "-C", repo_dir, "commit", "-m", msg],
                                 capture_output=True, text=True, timeout=10)
-        # 如果没有变化，跳过push
         if "nothing to commit" in result.stdout + result.stderr:
             print("[✓] 数据无变化，跳过推送")
             return
-
-        # git push
         subprocess.run(["git", "-C", repo_dir, "push"], check=True, timeout=60)
         print("[✓] 已推送到 GitHub")
     except subprocess.TimeoutExpired:
@@ -60,30 +51,23 @@ def main():
     print(f"📅 {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
 
-    # 加载配置
     config = load_config()
     jd_config = config["jd_union"]
     push_config = config["push"]
 
-    # 初始化 API
     api = JdUnionAPI(
         app_key=jd_config["app_key"],
         secret_key=jd_config["secret_key"],
     )
 
-    # 要查询的频道 - 每频道取2页，增加商品多样性
-    channels = {
-        27: "食品",
-        29: "家居生活",
-        10: "9.9包邮",
-        1: "好券商品",
-        22: "实时热销榜",
-    }
-    pages = [1, 2]  # 每个频道取前2页
+    site_id = jd_config.get("site_id", "")
+
+    channels = {27: "食品", 29: "家居生活", 10: "9.9包邮", 1: "好券商品", 22: "实时热销榜"}
+    pages = [1, 2]
 
     all_items = []
 
-    # 逐频道获取商品
+    # ====== 步骤1: 获取京粉精选商品 ======
     for elite_id, name in channels.items():
         for page in pages:
             print(f"\n🔍 获取频道: {name} (eliteId={elite_id}, 第{page}页)")
@@ -93,35 +77,61 @@ def main():
                 if converted:
                     all_items.append(converted)
             print(f"  有效商品: {len(items)} 条")
-            # 避免请求太快
             time.sleep(0.3)
 
-    # 如果没获取到任何商品，生成空数据
     if not all_items:
         print("\n⚠️ 未获取到任何商品！")
-        print("可能原因：")
-        print("  1. API密钥未激活（需在 union.jd.com 申请接口权限）")
-        print("  2. 接口权限审核中（审核约1-2周）")
-        print("  3. 请求参数有误")
-
-        # 生成示例数据供测试网页
-        print("\n📝 生成空的 data.json...")
         data = generate_data([])
         save_data(data, os.path.join(PROJECT_DIR, "docs"))
         return
 
     print(f"\n📊 共获取 {len(all_items)} 条原始商品")
 
-    # 筛选
+    # ====== 步骤2: 筛选 ======
     filtered = filter_products(all_items, push_config)
     print(f"🔍 筛选后 {len(filtered)} 条")
 
-    # 排序 + 选取
     max_items = push_config.get("max_items", 10)
     selected = rank_and_select(filtered, max_items)
-    print(f"✅ 最终选取 {len(selected)} 条")
+    print(f"✅ 初步选取 {len(selected)} 条")
 
-    # 显示选取结果
+    # ====== 步骤3: p.3.cn 实时查价 ======
+    print("\n💰 查询实时价格...")
+    sku_ids = [item.get("sku_id", "") for item in selected if item.get("sku_id")]
+    real_prices = api.get_real_price(sku_ids)
+    print(f"  获取到 {len(real_prices)} 个实时价格")
+
+    # 用实时价格更新
+    for item in selected:
+        sid = item.get("sku_id", "")
+        if sid in real_prices and real_prices[sid] > 0:
+            old_price = item["price"]
+            new_price = real_prices[sid]
+            item["price"] = new_price
+            # 如果原价低于新价格，调整原价
+            if item.get("orig_price", 0) < new_price:
+                item["orig_price"] = new_price * 1.3
+            if old_price != new_price:
+                print(f"  {item['title'][:20]}... ¥{old_price} → ¥{new_price}")
+
+    # ====== 步骤4: 转链（带推广位） ======
+    if site_id:
+        print("\n🔗 生成推广链接...")
+        for item in selected:
+            original_link = item.get("link", "")
+            if not original_link:
+                continue
+            promo_link = api.get_promotion_link(original_link, site_id)
+            if promo_link:
+                item["link"] = promo_link
+                print(f"  ✅ {item['title'][:25]}... → {promo_link[:40]}")
+            else:
+                print(f"  ⚠️ 转链失败: {item['title'][:25]}... 保留原链接")
+            time.sleep(0.2)
+    else:
+        print("\n⚠️ 未配置 site_id，跳过转链（链接不含佣金！）")
+
+    # ====== 步骤5: 显示结果 ======
     print("\n" + "=" * 50)
     print("📋 今日优惠清单：")
     for i, item in enumerate(selected, 1):
@@ -129,28 +139,26 @@ def main():
         orig = item.get("orig_price", 0)
         title = item.get("title", "?")[:30]
         discount = f"{(orig-price)/orig*100:.0f}折" if orig > price else ""
-        print(f"  {i}. {title} | ¥{price:.1f} {discount}")
+        link_preview = item.get("link", "")[:40]
+        print(f"  {i}. {title} | ¥{price:.1f} {discount} | {link_preview}...")
 
-    # 生成数据文件
+    # ====== 步骤6: 生成数据 ======
     data = generate_data(selected)
     docs_dir = os.path.join(PROJECT_DIR, "docs")
     save_data(data, docs_dir)
 
-    # 更新历史记录
+    # 更新历史
     history = load_history()
     for item in selected:
         sku_id = item.get("sku_id", "")
         if sku_id:
             history.setdefault("sku_ids", []).append(sku_id)
-    # 只保留最近30天的
     history["sku_ids"] = history["sku_ids"][-300:]
     today = time.strftime("%Y-%m-%d")
     history.setdefault("dates", {})[today] = len(selected)
     save_history(history)
 
-    # 推送到 GitHub
     print("\n📤 推送到 GitHub...")
-    # 为自动推送添加 GIT_SSH_COMMAND 环境变量（避免交互式确认）
     git_push(PROJECT_DIR)
 
     print(f"\n🎉 完成！访问: {config['github']['pages_url']}")
