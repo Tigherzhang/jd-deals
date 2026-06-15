@@ -1,9 +1,6 @@
 name: 每日更新优惠商品
 
 on:
-  push:
-    paths-ignore:
-      - 'docs/data.json'
   schedule:
     # 北京时间 8:30 = UTC 00:30
     - cron: '30 0 * * *'
