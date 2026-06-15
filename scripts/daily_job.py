@@ -53,7 +53,7 @@ def load_config():
         },
         "push": {
             "schedule_time": "08:30",
-            "max_items": int(os.environ.get("MAX_ITEMS", "10")),
+            "max_items": int(os.environ.get("MAX_ITEMS", "20")),
             "min_price": int(os.environ.get("MIN_PRICE", "10")),
             "max_price": int(os.environ.get("MAX_PRICE", "100")),
             "price_upper_limit": int(os.environ.get("PRICE_UPPER_LIMIT", "500")),
