@@ -1,6 +1,231 @@
 {
-  "update_time": "2026年06月15日 13:36",
-  "total": 0,
-  "items": [],
-  "text_promo": "📅 2026年06月15日 京东优惠精选\n\n━━━━━━━━━━━━\n🔔 价格以京东实际为准 · 每日更新"
+  "update_time": "2026年06月15日 21:52",
+  "total": 10,
+  "items": [
+    {
+      "emoji": "🧴",
+      "title": "陈小懒（CHENXIAOLAN）抽取式洗脸巾加厚款装擦脸卸妆洁面巾一次性面巾纸干湿两用擦脸巾 珍珠双面纹【160抽】2包装",
+      "price": "8.8",
+      "orig_price": "46.8",
+      "tags": [
+        "🏷 满减19元",
+        "券后¥9",
+        "🔥 81折",
+        "⚡超值",
+        "💎好价",
+        "👍好评100%",
+        "销量100+"
+      ],
+      "meta": "好评率 100% · 月销 500件",
+      "link": "https://item.jd.com/10220652775898.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeQYwVvoG5NrE76dEhBoGjxA352zfaEnIFGSNRbox5pdup8klBCZxrLAffYz8JpEBWSRep3Q",
+      "category": "日用品",
+      "discount_pct": 81,
+      "_raw_price": 27.8,
+      "_raw_coupon_price": 8.8,
+      "_raw_coupon_amount": 19.0
+    },
+    {
+      "emoji": "📦",
+      "title": "哲高积木拼装街景转角花店小屋厨房卧室客厅儿童玩具男女生生日礼物 转角花店-591颗粒",
+      "price": "14.0",
+      "orig_price": "72.0",
+      "tags": [
+        "🏷 满减23元",
+        "券后¥14",
+        "🔥 81折",
+        "⚡超值",
+        "💎好价",
+        "👍好评99%",
+        "销量100+"
+      ],
+      "meta": "好评率 99% · 月销 100件",
+      "link": "https://item.jd.com/10029881549186.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeREikf0EGeCYOTiEenLkateGVlt34K0KTagSKHOPw2VzBuYBgBhJRnaALNjhn35EzOUX6kQ",
+      "category": "其他",
+      "discount_pct": 81,
+      "_raw_price": 49.0,
+      "_raw_coupon_price": 14.0,
+      "_raw_coupon_amount": 23.0
+    },
+    {
+      "emoji": "🍖",
+      "title": "同仁堂（TRT）品牌北京同仁堂大枣225g红枣甜枣休闲零食干果 泡水煮粥补气血特级大枣味甜核小肉厚 一袋装",
+      "price": "3.9",
+      "orig_price": "19.9",
+      "tags": [
+        "🏷 满减8元",
+        "券后¥4",
+        "🔥 80折",
+        "⚡超值",
+        "💎好价",
+        "👍好评100%",
+        "销量100+"
+      ],
+      "meta": "好评率 100% · 月销 700件",
+      "link": "https://item.jd.com/10222913070829.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoesDYymc0gXmUo0-O9gXmgA2_bV2LoFZN6ePxml94twrKkN-q-UHKfuzmhcmHqcxOT9gCEUg",
+      "category": "食品",
+      "discount_pct": 80,
+      "_raw_price": 11.9,
+      "_raw_coupon_price": 3.9,
+      "_raw_coupon_amount": 8.0
+    },
+    {
+      "emoji": "🧴",
+      "title": "舒客牙刷软毛清洁护龈成人情侣小头家庭装品牌 【买一套送一套】到手 16支",
+      "price": "25.0",
+      "orig_price": "113.0",
+      "tags": [
+        "🏷 满减39元",
+        "券后¥25",
+        "🔥 78折",
+        "⚡超值",
+        "👍好评100%",
+        "销量100+"
+      ],
+      "meta": "好评率 100% · 月销 200件",
+      "link": "https://item.jd.com/10219733402194.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeKLPvygfVc8CZNq0N0xe1MkLgh42z9QLKvHSkbyRUc6mKhiBJT9i61G9Mqb72YE5CcC6Aag",
+      "category": "日用品",
+      "discount_pct": 78,
+      "_raw_price": 74.0,
+      "_raw_coupon_price": 25.0,
+      "_raw_coupon_amount": 39.0
+    },
+    {
+      "emoji": "🍖",
+      "title": "刺猬阿甘花椒锅巴香辣解馋膨化休闲零食宿舍追剧 花椒锅巴15g*30包（三种口味）",
+      "price": "17.8",
+      "orig_price": "73.8",
+      "tags": [
+        "🏷 满减28元",
+        "券后¥18",
+        "🔥 76折",
+        "⚡超值",
+        "💎好价",
+        "👍好评99%",
+        "销量40+"
+      ],
+      "meta": "好评率 99% · 月销 4000件",
+      "link": "https://item.jd.com/28437484568.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoehbTpnB8Ff6KmFYeEpkiutTcWO83db3SNOQUgK7OAM0wSYtbzuAkxOg3DYQbj_4FJ3JR0kg",
+      "category": "食品",
+      "discount_pct": 76,
+      "_raw_price": 45.8,
+      "_raw_coupon_price": 17.799999999999997,
+      "_raw_coupon_amount": 28.0
+    },
+    {
+      "emoji": "🧴",
+      "title": "老管家防串染洗衣吸色片母婴可用衣物防串染色纸泡泡纸色母片防染巾 50片 1袋",
+      "price": "6.9",
+      "orig_price": "14.9",
+      "tags": [
+        "🏷 满减4元",
+        "券后¥7",
+        "🔥 54折",
+        "⚡超值",
+        "💎好价",
+        "👍好评99%",
+        "销量10+"
+      ],
+      "meta": "好评率 99% · 月销 1000件",
+      "link": "https://item.jd.com/10074962791390.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeXq8tvOIqoCxtZLP6yu6tvYDIQ7s90U_77yaPUI9VkP70tcR38ZTgzr8KcMZjlERsmK_dcQ",
+      "category": "日用品",
+      "discount_pct": 54,
+      "_raw_price": 10.9,
+      "_raw_coupon_price": 6.9,
+      "_raw_coupon_amount": 4.0
+    },
+    {
+      "emoji": "🧴",
+      "title": "老管家洗衣机槽清洗剂清洁污渍家用神器滚筒全自动强力除垢杀菌爆氧粉 小岳岳同款10包【爆 家庭囤货】",
+      "price": "19.4",
+      "orig_price": "39.4",
+      "tags": [
+        "🏷 满减10元",
+        "券后¥19",
+        "🔥 51折",
+        "⚡超值",
+        "💎好价",
+        "👍好评99%",
+        "销量30+"
+      ],
+      "meta": "好评率 99% · 月销 3000件",
+      "link": "https://item.jd.com/10118471547999.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeWC49U8rKfoS1PBrb8cOCCwwGqdgYwyIl1P9cUI2JxBr4ho2XY6WonkAvIOE_3Ka7mp00Cg",
+      "category": "日用品",
+      "discount_pct": 51,
+      "_raw_price": 29.4,
+      "_raw_coupon_price": 19.4,
+      "_raw_coupon_amount": 10.0
+    },
+    {
+      "emoji": "🍖",
+      "title": "庾丰 海南芒果 新鲜水果生鲜整箱当季大青皮金煌芒 热带孕妇玉芒果 5斤装(净果4.5斤)单果200g+",
+      "price": "12.8",
+      "orig_price": "24.8",
+      "tags": [
+        "🏷 满减5元",
+        "券后¥13",
+        "🔥 48折",
+        "💎好价",
+        "👍好评98%",
+        "📈2万+"
+      ],
+      "meta": "好评率 98% · 月销 2.0万件",
+      "link": "https://item.jd.com/10100369734688.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoed7HtRdoT9UQ9Ug1cF2qNJu5U00PqEuhBU2_Qs9VY903VFhtn1qstnMlfBBfcpbBPYB4k6A",
+      "category": "食品",
+      "discount_pct": 48,
+      "_raw_price": 19.8,
+      "_raw_coupon_price": 12.8,
+      "_raw_coupon_amount": 5.0
+    },
+    {
+      "emoji": "📦",
+      "title": "颐莲（RELLET） 张凌赫代言玻尿酸补水喷雾300ml*2瓶 爽肤水补水保湿M",
+      "price": "69.0",
+      "orig_price": "129.0",
+      "tags": [
+        "🏷 满减30元",
+        "券后¥69",
+        "🔥 47折",
+        "👍好评99%",
+        "销量70+"
+      ],
+      "meta": "好评率 99% · 月销 7000件",
+      "link": "https://item.jd.com/10030016419501.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeB0bwYqMmKXAW5Jmoha2LG-GBVP5BwsAWw4CXF1XsFmYJo65zSJpp8BGwMXTrjb4KAJ9itw",
+      "category": "其他",
+      "discount_pct": 47,
+      "_raw_price": 99.0,
+      "_raw_coupon_price": 69.0,
+      "_raw_coupon_amount": 30.0
+    },
+    {
+      "emoji": "🧴",
+      "title": "京喜大师香氛2kg瓶装留香洁净护色洗衣液瓶装洗衣液家用4斤实惠装 大师香氛3大桶",
+      "price": "28.8",
+      "orig_price": "48.8",
+      "tags": [
+        "🏷 满减10元",
+        "券后¥29",
+        "🔥 41折",
+        "👍好评98%",
+        "销量100+"
+      ],
+      "meta": "好评率 98% · 月销 400件",
+      "link": "https://item.jd.com/10222289870489.html",
+      "coupon_link": "https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeKMXrtkvEl2HYKaZS1zLRQeIn-oyJJogSB5O8WrRWfW2_VOQ_jyLwAzDiptZMdeRxqHVxIQ",
+      "category": "日用品",
+      "discount_pct": 41,
+      "_raw_price": 38.8,
+      "_raw_coupon_price": 28.799999999999997,
+      "_raw_coupon_amount": 10.0
+    }
+  ],
+  "text_promo": "📅 2026年06月15日 京东优惠精选\n\n🧴 陈小懒（CHENXIAOLAN）抽取式洗脸巾加厚款装擦脸卸妆洁面巾一次性面巾纸干湿两用擦脸巾 珍珠双面纹【160抽】2包装 💰 ¥8.8（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeQYwVvoG5NrE76dEhBoGjxA352zfaEnIFGSNRbox5pdup8klBCZxrLAffYz8JpEBWSRep3Q\n🛒 https://item.jd.com/10220652775898.html\n\n📦 哲高积木拼装街景转角花店小屋厨房卧室客厅儿童玩具男女生生日礼物 转角花店-591颗粒 💰 ¥14.0（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeREikf0EGeCYOTiEenLkateGVlt34K0KTagSKHOPw2VzBuYBgBhJRnaALNjhn35EzOUX6kQ\n🛒 https://item.jd.com/10029881549186.html\n\n🍖 同仁堂（TRT）品牌北京同仁堂大枣225g红枣甜枣休闲零食干果 泡水煮粥补气血特级大枣味甜核小肉厚 一袋装 💰 ¥3.9（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoesDYymc0gXmUo0-O9gXmgA2_bV2LoFZN6ePxml94twrKkN-q-UHKfuzmhcmHqcxOT9gCEUg\n🛒 https://item.jd.com/10222913070829.html\n\n🧴 舒客牙刷软毛清洁护龈成人情侣小头家庭装品牌 【买一套送一套】到手 16支 💰 ¥25.0（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeKLPvygfVc8CZNq0N0xe1MkLgh42z9QLKvHSkbyRUc6mKhiBJT9i61G9Mqb72YE5CcC6Aag\n🛒 https://item.jd.com/10219733402194.html\n\n🍖 刺猬阿甘花椒锅巴香辣解馋膨化休闲零食宿舍追剧 花椒锅巴15g*30包（三种口味） 💰 ¥17.8（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoehbTpnB8Ff6KmFYeEpkiutTcWO83db3SNOQUgK7OAM0wSYtbzuAkxOg3DYQbj_4FJ3JR0kg\n🛒 https://item.jd.com/28437484568.html\n\n🧴 老管家防串染洗衣吸色片母婴可用衣物防串染色纸泡泡纸色母片防染巾 50片 1袋 💰 ¥6.9（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeXq8tvOIqoCxtZLP6yu6tvYDIQ7s90U_77yaPUI9VkP70tcR38ZTgzr8KcMZjlERsmK_dcQ\n🛒 https://item.jd.com/10074962791390.html\n\n🧴 老管家洗衣机槽清洗剂清洁污渍家用神器滚筒全自动强力除垢杀菌爆氧粉 小岳岳同款10包【爆 家庭囤货】 💰 ¥19.4（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeWC49U8rKfoS1PBrb8cOCCwwGqdgYwyIl1P9cUI2JxBr4ho2XY6WonkAvIOE_3Ka7mp00Cg\n🛒 https://item.jd.com/10118471547999.html\n\n🍖 庾丰 海南芒果 新鲜水果生鲜整箱当季大青皮金煌芒 热带孕妇玉芒果 5斤装(净果4.5斤)单果200g+ 💰 ¥12.8（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoed7HtRdoT9UQ9Ug1cF2qNJu5U00PqEuhBU2_Qs9VY903VFhtn1qstnMlfBBfcpbBPYB4k6A\n🛒 https://item.jd.com/10100369734688.html\n\n📦 颐莲（RELLET） 张凌赫代言玻尿酸补水喷雾300ml*2瓶 爽肤水补水保湿M 💰 ¥69.0（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeB0bwYqMmKXAW5Jmoha2LG-GBVP5BwsAWw4CXF1XsFmYJo65zSJpp8BGwMXTrjb4KAJ9itw\n🛒 https://item.jd.com/10030016419501.html\n\n🧴 京喜大师香氛2kg瓶装留香洁净护色洗衣液瓶装洗衣液家用4斤实惠装 大师香氛3大桶 💰 ¥28.8（券后价）\n🎫 领券：https://coupon.m.jd.com/coupons/show.action?linkKey=AAROH_xIpeffAs_-naABEFoeKMXrtkvEl2HYKaZS1zLRQeIn-oyJJogSB5O8WrRWfW2_VOQ_jyLwAzDiptZMdeRxqHVxIQ\n🛒 https://item.jd.com/10222289870489.html\n\n━━━━━━━━━━━━\n🔔 价格以京东实际为准 · 每日更新"
 }
