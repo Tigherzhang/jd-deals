@@ -181,15 +181,23 @@ class JdUnionAPI:
         """
         import urllib.error
         results = {}
-        for sku in sku_ids:
+        for i, sku in enumerate(sku_ids):
             try:
+                # 加延迟避免京东限流
+                if i > 0:
+                    time.sleep(0.5)
                 url = f"https://item.jd.com/{sku}.html"
-                req = urllib.request.Request(url)
-                with urllib.request.urlopen(req, timeout=5) as resp:
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml",
+                    "Accept-Language": "zh-CN,zh;q=0.9",
+                })
+                with urllib.request.urlopen(req, timeout=10) as resp:
                     final = resp.url
                     results[sku] = "jd.com/?d" not in final
-            except Exception:
-                results[sku] = False
+            except Exception as e:
+                print(f"  [状态验证] {sku[:14]}... 网络异常({e})，暂判为在售")
+                results[sku] = True  # 网络异常时默认放行，避免误杀
         return results
 
     def get_real_price(self, sku_ids):
@@ -290,13 +298,13 @@ class JdUnionAPI:
             # 销量
             sales_30d = raw.get("inOrderCount30DaysSku") or raw.get("inOrderCount30Days", 0)
 
-            # 链接 - 用纯数字SKU构建 item.jd.com 格式
-            if pure_sku:
+            # 链接 - 优先用 materialUrl（jingfen链接，后续302解析真实SKU）
+            material_url = raw.get("materialUrl") or ""
+            if material_url and not material_url.startswith("http"):
+                material_url = f"https://{material_url}"
+            # fallback: spuid 不是有效 SKU，不直接构建 item.jd.com 链接
+            if not material_url and pure_sku:
                 material_url = f"https://item.jd.com/{pure_sku}.html"
-            else:
-                material_url = raw.get("materialUrl") or ""
-                if material_url and not material_url.startswith("http"):
-                    material_url = f"https://{material_url}"
 
             # 分类
             cat_info = raw.get("categoryInfo") or {}

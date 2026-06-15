@@ -162,13 +162,26 @@ def main():
     selected = valid_items
     print(f"  在售商品: {len(selected)} 条")
 
-    # 如果剔除后不足10条，从候补中补齐
+    # 如果剔除后不足10条，从候补中补齐（需要验证候补商品在售状态）
     if len(selected) < max_items:
-        remaining = [r for r in filtered if r not in selected and r.get("sku_id") and status.get(r["sku_id"], False)]
         need = max_items - len(selected)
-        for r in remaining[:need]:
-            selected.append(r)
-            print(f"  ✅ 候补: {r['title'][:30]}...")
+        # 从已筛选但未被选中的商品中取候补
+        selected_ids = {s.get("sku_id", "") for s in selected}
+        candidates = [r for r in filtered if r.get("sku_id") and r["sku_id"] not in selected_ids]
+        # 批量验证候补商品在售状态（每次最多验证20个）
+        for batch_start in range(0, min(len(candidates), 60), 20):
+            if len(selected) >= max_items:
+                break
+            batch = candidates[batch_start:batch_start + 20]
+            batch_skus = [c["sku_id"] for c in batch]
+            batch_status = api.verify_item_status(batch_skus)
+            for c in batch:
+                if len(selected) >= max_items:
+                    break
+                sid = c.get("sku_id", "")
+                if batch_status.get(sid, False):
+                    selected.append(c)
+                    print(f"  ✅ 候补: {c['title'][:30]}...")
     print(f"  最终选取: {len(selected)} 条")
 
     # ====== 步骤5: 转链（带推广位） ======
