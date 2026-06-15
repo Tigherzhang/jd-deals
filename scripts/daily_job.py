@@ -19,12 +19,46 @@ from page_generator import generate_data, save_data
 
 
 def load_config():
+    """加载配置：优先读 config.json，fallback 到环境变量（供 GitHub Actions 使用）"""
     config_path = os.path.join(PROJECT_DIR, "config.json")
-    if not os.path.exists(config_path):
-        print(f"[✗] 配置文件不存在: {config_path}")
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        if config.get("jd_union", {}).get("app_key"):
+            print("[✓] 从 config.json 加载配置")
+            return config
+
+    # fallback: 从环境变量读取（GitHub Actions）
+    app_key = os.environ.get("JD_APP_KEY", "")
+    secret_key = os.environ.get("JD_SECRET_KEY", "")
+    site_id = os.environ.get("JD_SITE_ID", "")
+    union_id = os.environ.get("JD_UNION_ID", "")
+
+    if not app_key or not secret_key:
+        print("[✗] 未找到配置：config.json 不存在且环境变量 JD_APP_KEY/JD_SECRET_KEY 未设置")
         sys.exit(1)
-    with open(config_path, "r") as f:
-        return json.load(f)
+
+    print("[✓] 从环境变量加载配置")
+    return {
+        "jd_union": {
+            "app_key": app_key,
+            "secret_key": secret_key,
+            "site_id": site_id,
+            "union_id": union_id,
+        },
+        "github": {
+            "username": os.environ.get("GH_USERNAME", "Tigherzhang"),
+            "repo": os.environ.get("GH_REPO", "jd-deals"),
+            "pages_url": os.environ.get("GH_PAGES_URL", "https://tigherzhang.github.io/jd-deals/"),
+        },
+        "push": {
+            "schedule_time": "08:30",
+            "max_items": int(os.environ.get("MAX_ITEMS", "10")),
+            "min_price": int(os.environ.get("MIN_PRICE", "10")),
+            "max_price": int(os.environ.get("MAX_PRICE", "100")),
+            "price_upper_limit": int(os.environ.get("PRICE_UPPER_LIMIT", "500")),
+        },
+    }
 
 
 def git_push(repo_dir):
