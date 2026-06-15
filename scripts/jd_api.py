@@ -28,6 +28,9 @@ class JdUnionAPI:
     def __init__(self, app_key, secret_key):
         self.app_key = app_key
         self.secret_key = secret_key
+        # 创建不走系统代理的 opener（绕过无法连接的本地代理）
+        proxy_handler = urllib.request.ProxyHandler({})
+        self._opener = urllib.request.build_opener(proxy_handler)
 
     def _sign(self, params):
         """
@@ -71,7 +74,7 @@ class JdUnionAPI:
         req.add_header("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
 
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with self._opener.open(req, timeout=15) as resp:
                 result = json.loads(resp.read().decode('utf-8'))
                 # 检查是否签名错误
                 if "error_response" in result:
@@ -192,7 +195,7 @@ class JdUnionAPI:
                     "Accept": "text/html,application/xhtml+xml",
                     "Accept-Language": "zh-CN,zh;q=0.9",
                 })
-                with urllib.request.urlopen(req, timeout=10) as resp:
+                with self._opener.open(req, timeout=10) as resp:
                     final = resp.url
                     results[sku] = "jd.com/?d" not in final
             except Exception as e:
@@ -214,7 +217,7 @@ class JdUnionAPI:
                 "User-Agent": "Mozilla/5.0",
                 "Referer": "https://item.jd.com/",
             })
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with self._opener.open(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode())
                 result = {}
                 for d in data:
@@ -397,10 +400,16 @@ class JdUnionAPI:
             category = "其他"
 
             # ===== 标题关键词匹配（特定日用品→食品→计生→化妆品→母婴→保健品→通用日用品）=====
-            # 第1步：特定日用品（饭盒/餐盒等容器类，即使含"水果"也归日用品）
+            # 第1步：特定日用品
             if any(kw in title for kw in ["一次性饭盒", "一次性筷子", "一次性杯子", "打包盒", "餐盒", "饭盒",
                     "口罩", "卫生巾", "安心裤", "安全裤", "护垫",
-                    "蒸汽眼罩", "矫姿带", "背背佳", "暖宝宝"]):
+                    "眼罩", "蒸汽眼罩", "热敷眼罩", "矫姿带", "背背佳", "暖宝宝",
+                    "米桶", "储米", "面桶", "揉面垫", "擀面垫", "打蛋器", "烘焙工具",
+                    "菜刀", "刀具", "切菜", "切片刀", "水果刀", "剪刀", "砧板", "案板",
+                    "封口机", "真空机", "绞肉机", "榨汁机", "破壁机",
+                    "沐浴露", "沐浴液", "身体乳", "护手霜",
+                    "洗发水", "洗发露", "洗发乳", "护发素", "发膜",
+                    "洗脸巾", "擦脸巾", "面巾纸", "棉柔巾"]):
                 category = "日用品"
             # 第2步：食品（水果/生鲜/零食等，优先于母婴避免含"孕妇"的水果被误判）
             elif any(kw in title for kw in ["水果", "苹果", "香蕉", "橙", "猕猴桃", "芒果", "火龙果", "榴莲", "葡萄", "西瓜", "哈密瓜", "荔枝", "龙眼", "草莓", "蓝莓", "车厘子", "桃", "梨", "柚子", "柠檬", "菠萝", "椰子", "牛油果", "甜瓜", "生鲜", "新鲜水果"]):
@@ -415,7 +424,7 @@ class JdUnionAPI:
             elif any(kw in title for kw in ["避孕套", "安全套", "验孕", "排卵", "早孕", "验孕棒", "测排卵", "杜蕾斯", "杰士邦", "冈本"]):
                 category = "计生用品"
             # 第4步：化妆品
-            elif any(kw in title for kw in ["面膜", "面霜", "眼霜", "乳液", "爽肤水", "化妆水", "卸妆", "气垫", "粉底", "精华液", "抗皱", "紧致", "美白", "玻尿酸", "胶原蛋白", "修护", "防晒霜", "防晒喷雾"]):
+            elif any(kw in title for kw in ["面膜", "面霜", "眼霜", "乳液", "爽肤水", "化妆水", "卸妆", "气垫", "粉底", "精华液", "抗皱", "紧致", "美白", "玻尿酸", "胶原蛋白", "防晒霜", "防晒喷雾", "补水喷雾", "次抛", "修复液", "透明质酸钠", "敷尔佳"]):
                 category = "化妆品"
             # 第5步：母婴（在食品之后，避免含"孕妇"的水果被误判）
             elif any(kw in title for kw in ["婴儿", "宝宝", "婴幼儿", "儿童牙刷", "孕产妇", "孕妇", "孕产", "奶粉", "尿不湿", "奶瓶", "奶嘴", "辅食", "磨牙", "待产", "哺乳", "吸奶", "推车", "安全座椅", "围兜", "睡袋"]):

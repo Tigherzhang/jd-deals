@@ -97,13 +97,11 @@ def main():
     site_id = jd_config.get("site_id", "")
 
     channels = {27: "食品", 29: "家居生活", 10: "9.9包邮", 1: "好券商品", 22: "实时热销榜"}
-    pages = [1, 2]
-
+    # 食品和日用品频道拉4页，其他频道拉2页
     all_items = []
-
-    # ====== 步骤1: 获取京粉精选商品 ======
     for elite_id, name in channels.items():
-        for page in pages:
+        max_page = 4 if elite_id in (27, 29) else 2
+        for page in range(1, max_page + 1):
             print(f"\n🔍 获取频道: {name} (eliteId={elite_id}, 第{page}页)")
             items = api.fetch_jingfen_goods(elite_id, page=page, page_size=50)
             for item in items:
@@ -184,22 +182,6 @@ def main():
                     print(f"  ✅ 候补: {c['title'][:30]}...")
     print(f"  最终选取: {len(selected)} 条")
 
-    # ====== 步骤5: 转链（带推广位） ======
-    if site_id:
-        print("\n🔗 生成推广链接...")
-        for item in selected:
-            original_link = item.get("link", "")
-            if not original_link:
-                continue
-            promo_link = api.get_promotion_link(original_link, site_id)
-            if promo_link:
-                item["link"] = promo_link
-                print(f"  ✅ {item['title'][:25]}... → 推广短链")
-            else:
-                pass  # 转链不可用，保持 item.jd.com 链接
-    else:
-        print("\n⚠️ site_id 未配置，跳过转链")
-
     # ====== 步骤5: p.3.cn 实时查价（网络可能不通，降级用API价格） ======
     print("\n💰 查询实时价格...")
     sku_ids = [item.get("sku_id", "") for item in selected if item.get("sku_id")]
@@ -221,7 +203,7 @@ def main():
             if old_price != new_price:
                 print(f"  {item['title'][:20]}... ¥{old_price} → ¥{new_price}")
 
-    # ====== 步骤4: 转链（带推广位） ======
+    # ====== 步骤6: 转链（带推广位） ======
     if site_id:
         print("\n🔗 生成推广链接...")
         for item in selected:

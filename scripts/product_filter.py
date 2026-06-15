@@ -32,8 +32,8 @@ def filter_products(items, config):
     """
     筛选商品
     规则：
-    1. 排除小众/工业品类（甲醛检测仪、活性炭等）
-    2. 销量1000+，好评90%+，评价数500+
+    1. 排除小众/工业品类（甲醛检测仪、活性炭等）/药品/医疗器械
+    2. 销量：食品300+，其他500+ | 好评90%+ | 评价数：食品100+，其他200+
     3. 价格在 min_price ~ max_price 区间
     4. 折扣至少5%
     """
@@ -84,14 +84,16 @@ def filter_products(items, config):
         if good_rate == 0:
             continue  # 无好评数据的跳过
 
-        # 月销量1000+
+        # 月销量（食品放宽到300+，其他500+）
         sales = item.get("sales_30d", 0)
-        if sales < 1000:
+        min_sales = 300 if item.get("category") == "食品" else 500
+        if sales < min_sales:
             continue
 
-        # 评价数500+
+        # 评价数（食品放宽到100+，其他200+）
         good_count = item.get("good_count", 0)
-        if good_count < 500:
+        min_comments = 100 if item.get("category") == "食品" else 200
+        if good_count < min_comments:
             continue
 
         filtered.append(item)
@@ -105,7 +107,24 @@ def filter_products(items, config):
             seen.add(sid)
             unique.append(item)
 
-    return unique
+    # 去重（按标题相似度，避免同款变体）
+    import re
+    title_groups = {}
+    for item in unique:
+        # 提取核心标题：去掉括号内的变体描述
+        base = re.sub(r'[（(【\<].*', '', item.get("title", ""))
+        base = base.strip()[:30]  # 前30字作为分组键
+        if base not in title_groups:
+            title_groups[base] = item
+        else:
+            # 保留销量更高或价格更低的
+            existing = title_groups[base]
+            if item.get("sales_30d", 0) > existing.get("sales_30d", 0):
+                title_groups[base] = item
+            elif item.get("price", 0) < existing.get("price", 0):
+                title_groups[base] = item
+
+    return list(title_groups.values())
 
 
 def score_product(item):
@@ -137,14 +156,14 @@ def score_product(item):
     elif sales >= 1000:
         score += 8
 
-    # 品类偏好（10%）：食品/日用品 > 化妆品/母婴/保健品 > 计生
+    # 品类偏好（10%）：食品/日用品 >> 化妆品/母婴/保健品 > 计生
     cat = item.get("category", "")
     if cat in ("食品", "日用品"):
         score += 10
     elif cat in ("化妆品", "母婴", "保健品"):
-        score += 7
+        score += 5
     elif cat == "计生用品":
-        score += 4
+        score += 2
 
     # 佣金比例（10%）
     ratio = item.get("commission_ratio", 0)
@@ -157,7 +176,7 @@ def score_product(item):
 def rank_and_select(items, max_items=20):
     """
     排序并选取前N条，保证品类多样性
-    食品占40%、日用品占30%、其他品类占30%
+    食品+日用品优先（75%），化妆品/保健品/母婴/计生作为补充
     """
     if not items:
         return []
@@ -173,27 +192,35 @@ def rank_and_select(items, max_items=20):
     real_deals = [i for i in items if i.get("orig_price", 0) > i.get("price", 0)]
 
     selected = []
-    cat_quota = {
-        "食品": int(max_items * 0.40),      # 8条
-        "日用品": int(max_items * 0.30),    # 6条
-        "化妆品": int(max_items * 0.10),    # 2条
-        "母婴": int(max_items * 0.08),      # 2条
-        "保健品": int(max_items * 0.07),    # 1条
-        "计生用品": int(max_items * 0.05),  # 1条
-    }
 
-    # 按配额选取
-    for cat, quota in cat_quota.items():
-        cnt = 0
-        for item in real_deals:
-            if item.get("category") == cat and item not in selected:
+    # === 第一轮：优先填充食品和日用品 ===
+    primary_cats = ["食品", "日用品"]
+    primary_target = int(max_items * 0.8)  # 目标80%给食品+日用品
+
+    for item in real_deals:
+        if len(selected) >= primary_target:
+            break
+        if item.get("category") in primary_cats and item not in selected:
+            selected.append(item)
+
+    # 食品和日用品各至少占一定比例
+    food_count = sum(1 for i in selected if i.get("category") == "食品")
+    home_count = sum(1 for i in selected if i.get("category") == "日用品")
+
+    # === 第二轮：补充辅助品类（化妆品/母婴/保健品/计生）===
+    secondary_cats = ["化妆品", "母婴", "保健品", "计生用品"]
+    secondary_limit = int(max_items * 0.25)  # 辅助品类最多25%
+    secondary_count = 0
+
+    for item in real_deals:
+        if len(selected) >= max_items:
+            break
+        if item.get("category") in secondary_cats and item not in selected:
+            if secondary_count < secondary_limit or len(selected) < max_items:
                 selected.append(item)
-                cnt += 1
-                if cnt >= quota:
-                    break
+                secondary_count += 1
 
-    # 如果某些品类不足，用高分商品补齐
-    remaining = max_items - len(selected)
+    # === 第三轮：如果还不够，用高分商品补齐 ===
     for item in real_deals:
         if len(selected) >= max_items:
             break

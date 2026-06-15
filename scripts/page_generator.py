@@ -70,6 +70,9 @@ def format_item(item):
         "coupon_link": item.get("coupon_link", "") if item.get("coupon_amount", 0) > 0 else "",
         "category": item.get("category", "其他"),
         "discount_pct": discount_pct,
+        "sales_30d": item.get("sales_30d", 0),
+        "good_count": item.get("good_count", 0),
+        "good_rate": item.get("good_rate", 0),
         # 原始字段用于纯文字格式
         "_raw_price": price,
         "_raw_coupon_price": coupon_price,
