@@ -80,6 +80,13 @@ def git_push(repo_dir):
 
 
 def main():
+    # 心跳日志：证明脚本被执行过
+    LOG_DIR = os.path.join(PROJECT_DIR, "logs")
+    os.makedirs(LOG_DIR, exist_ok=True)
+    heartbeat_path = os.path.join(LOG_DIR, "heartbeat.log")
+    with open(heartbeat_path, "a") as hf:
+        hf.write(f"[START] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+
     print("=" * 50)
     print(f"🛒 京东优惠精选 - 每日采集")
     print(f"📅 {time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -115,6 +122,12 @@ def main():
         print("\n⚠️ 未获取到任何商品！")
         data = generate_data([])
         save_data(data, os.path.join(PROJECT_DIR, "docs"))
+        # 即使无商品也推送，确保网页更新（显示"暂无优惠"）
+        print("\n📤 推送到 GitHub...")
+        git_push(PROJECT_DIR)
+        with open(os.path.join(PROJECT_DIR, "logs", "heartbeat.log"), "a") as hf:
+            hf.write(f"[END:0items] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        print(f"\n🎉 完成！访问: {config['github']['pages_url']}")
         return
 
     print(f"\n📊 共获取 {len(all_items)} 条原始商品")
@@ -152,9 +165,12 @@ def main():
     valid_items = []
     for item in selected:
         sid = item.get("sku_id", "")
-        if sid and status.get(sid, False):
+        st = status.get(sid)
+        # True=在售, None=不确定(风控)也保守保留, False=确认下架才剔除
+        if st is not False:
             valid_items.append(item)
-            print(f"  ✅ {item['title'][:30]}... 在售")
+            label = "在售" if st is True else "保留(验证不确定)"
+            print(f"  ✅ {item['title'][:30]}... {label}")
         else:
             print(f"  ❌ {item['title'][:30]}... 已下架，剔除")
     selected = valid_items
@@ -177,7 +193,7 @@ def main():
                 if len(selected) >= max_items:
                     break
                 sid = c.get("sku_id", "")
-                if batch_status.get(sid, False):
+                if batch_status.get(sid, False) is not False:
                     selected.append(c)
                     print(f"  ✅ 候补: {c['title'][:30]}...")
     print(f"  最终选取: {len(selected)} 条")
@@ -249,6 +265,9 @@ def main():
 
     print("\n📤 推送到 GitHub...")
     git_push(PROJECT_DIR)
+
+    with open(os.path.join(PROJECT_DIR, "logs", "heartbeat.log"), "a") as hf:
+        hf.write(f"[END:{len(selected)}items] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     print(f"\n🎉 完成！访问: {config['github']['pages_url']}")
     print("=" * 50)

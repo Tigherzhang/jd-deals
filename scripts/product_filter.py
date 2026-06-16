@@ -111,9 +111,10 @@ def filter_products(items, config):
     import re
     title_groups = {}
     for item in unique:
-        # 提取核心标题：去掉括号内的变体描述
+        # 提取核心标题：去掉括号内的变体描述，合并多余空格
         base = re.sub(r'[（(【\<].*', '', item.get("title", ""))
-        base = base.strip()[:30]  # 前30字作为分组键
+        base = re.sub(r'\s+', '', base)  # 去掉所有空格
+        base = base.strip()[:25]  # 前25字作为分组键（收紧防止同款漏网）
         if base not in title_groups:
             title_groups[base] = item
         else:
