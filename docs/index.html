@@ -131,7 +131,7 @@ function render(data){
     }
     if(item.meta)html+='<div class="meta">'+item.meta+'</div>';
     html+='<div class="btn-row"><button class="btn btn-copy" onclick="copyText(\''+item.link.replace(/'/g,"\\'")+'\')">📋 复制链接</button>';
-    if(item.coupon_link)html+='<button class="btn btn-coupon" onclick="copyText(\''+item.coupon_link.replace(/'/g,"\\'")+'\')">🎫 领券</button>';
+    if(item.coupon_link)html+='<button class="btn btn-coupon" onclick="openCoupon(\''+item.coupon_link.replace(/'/g,"\\'")+'\')">🎫 领券</button>';
     html+='</div></div>';
   });
   html+='<div style="text-align:center;padding:8px;color:#999;font-size:12px">共 '+data.total+' 条优惠商品</div>';
@@ -142,6 +142,18 @@ async function copyText(text){
   const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
   document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
   showToast('✅ 已复制链接！');
+}
+async function openCoupon(url){
+  try{
+    // 先在当前页打开券页面
+    window.open(url, '_blank');
+    // 同时复制链接到剪贴板，方便手动粘贴
+    await navigator.clipboard.writeText(url).catch(()=>{});
+    showToast('✅ 已打开券页+复制链接！');
+  }catch(e){
+    window.open(url, '_blank');
+    showToast('✅ 已打开券页！');
+  }
 }
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');

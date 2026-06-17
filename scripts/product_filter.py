@@ -4,6 +4,8 @@
 import json
 import os
 import random
+import re
+from difflib import SequenceMatcher
 
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs", "history.json")
 
@@ -98,7 +100,7 @@ def filter_products(items, config):
 
         filtered.append(item)
 
-    # 去重（按sku_id）
+    # 去重（按 SKU ID）
     seen = set()
     unique = []
     for item in filtered:
@@ -107,25 +109,44 @@ def filter_products(items, config):
             seen.add(sid)
             unique.append(item)
 
-    # 去重（按标题相似度，避免同款变体）
-    import re
-    title_groups = {}
-    for item in unique:
-        # 提取核心标题：去掉括号内的变体描述，合并多余空格
-        base = re.sub(r'[（(【\<].*', '', item.get("title", ""))
-        base = re.sub(r'\s+', '', base)  # 去掉所有空格
-        base = base.strip()[:25]  # 前25字作为分组键（收紧防止同款漏网）
-        if base not in title_groups:
-            title_groups[base] = item
-        else:
-            # 保留销量更高或价格更低的
-            existing = title_groups[base]
-            if item.get("sales_30d", 0) > existing.get("sales_30d", 0):
-                title_groups[base] = item
-            elif item.get("price", 0) < existing.get("price", 0):
-                title_groups[base] = item
+    # 去重（按标题相似度，避免同款变体重复）
+    # 策略：依次检查，如果新商品与已保留的商品标题相似度 > 0.85，视为同款，跳过
+    def _clean_title(title):
+        """清理标题：去掉规格变体描述"""
+        # 去掉括号内的变体描述
+        base = re.sub(r'[（(【\<].*', '', title)
+        # 去掉空格
+        base = re.sub(r'\s+', '', base)
+        return base.strip()
 
-    return list(title_groups.values())
+    def _title_similarity(t1, t2):
+        """计算两个标题的相似度（基于清理后的核心标题）"""
+        c1, c2 = _clean_title(t1), _clean_title(t2)
+        if not c1 or not c2:
+            return 0.0
+        # 用最长公共子串比例
+        ratio = SequenceMatcher(None, c1, c2).ratio()
+        return ratio
+
+    final_items = [unique[0]]
+    for item in unique[1:]:
+        is_dup = False
+        for existing in final_items:
+            sim = _title_similarity(item.get("title", ""), existing.get("title", ""))
+            if sim > 0.85:
+                # 同款：保留销量更高或价格更低的
+                existing_sales = existing.get("sales_30d", 0)
+                new_sales = item.get("sales_30d", 0)
+                if new_sales > existing_sales or (new_sales == existing_sales and item.get("price", 0) < existing.get("price", 0)):
+                    final_items.remove(existing)
+                    final_items.append(item)
+                    print(f"  🔄 去重: {item['title'][:25]}... (替换销量{existing_sales}->{new_sales})")
+                is_dup = True
+                break
+        if not is_dup:
+            final_items.append(item)
+
+    return final_items
 
 
 def score_product(item):

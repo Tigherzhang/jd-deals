@@ -176,70 +176,13 @@ class JdUnionAPI:
                         pass
         return ""
 
-    def _check_single_item_status(self, sku):
-        """
-        检查单个SKU是否在售（使用移动端页面绕过风控）
-        返回: True=在售, False=已下架, None=不确定(被风控)
-        """
-        import urllib.error
-        url = f"https://item.m.jd.com/product/{sku}.html"
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-            "Accept": "text/html,application/xhtml+xml",
-            "Accept-Language": "zh-CN,zh;q=0.9",
-        })
-        try:
-            with self._opener.open(req, timeout=10) as resp:
-                html = resp.read().decode('utf-8', errors='replace')
-                size = len(html)
-
-                # 1. 被风控拦截：京东验证页
-                if size < 5000 or "京东验证" in html[:2000]:
-                    return None
-
-                # 2. 已下架信号
-                if "该商品已下架" in html or 'errCode:"20160304"' in html:
-                    return False
-
-                # 3. 在售信号：warestatus 字段存在
-                if "warestatus" in html:
-                    return True
-
-                # 4. 无法确定，保守保留（可能是页面结构变化）
-                return True
-        except Exception as e:
-            print(f"  [状态验证] {sku[:14]}... 网络异常({e})，暂判为在售")
-            return True
-
     def verify_item_status(self, sku_ids):
         """
-        验证商品是否在售（未被下架）
-        使用移动端页面 item.m.jd.com 绕过风控，检查页面内容信号
-        返回 {sku_id: True/False/None}  True=在售, False=已下架, None=不确定
+        验证商品是否在售（已被禁用 — 京东 CFE 风控不可绕过）
+        直接返回所有 SKU 为 True，节省 2-3 分钟
         """
-        results = {}
-        for i, sku in enumerate(sku_ids):
-            if i > 0:
-                time.sleep(1)  # 1秒间隔降低风控触发概率
-
-            for retry in range(3):
-                status = self._check_single_item_status(sku)
-                if status is not None:
-                    # 确定的结果
-                    results[sku] = status
-                    if not status:
-                        print(f"  ❌ {sku[:14]}... 已下架")
-                    break
-                else:
-                    # 被风控，等待后重试
-                    if retry < 2:
-                        print(f"  ⚠️ {sku[:14]}... 被风控，等待{2+retry*2}秒后重试...")
-                        time.sleep(2 + retry * 2)
-                    else:
-                        # 重试3次仍被风控，保守保留
-                        print(f"  ⚠️ {sku[:14]}... 风控重试失败，保守保留")
-                        results[sku] = True
-        return results
+        print(f"  ⏭️ 风控验证已跳过（京东 CFE 不可绕过）")
+        return {sku: True for sku in sku_ids if sku}
 
     def get_real_price(self, sku_ids):
         """

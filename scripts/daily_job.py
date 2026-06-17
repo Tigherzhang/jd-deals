@@ -158,47 +158,7 @@ def main():
             # 已经是 item.jd.com 格式
             print(f"  ✓ {item['title'][:30]}... (已是正确格式)")
 
-    # ====== 步骤4: 验证商品是否在售 ======
-    print("\n✅ 验证商品是否在售...")
-    sku_ids = [item.get("sku_id", "") for item in selected if item.get("sku_id")]
-    status = api.verify_item_status(sku_ids)
-    valid_items = []
-    for item in selected:
-        sid = item.get("sku_id", "")
-        st = status.get(sid)
-        # True=在售, None=不确定(风控)也保守保留, False=确认下架才剔除
-        if st is not False:
-            valid_items.append(item)
-            label = "在售" if st is True else "保留(验证不确定)"
-            print(f"  ✅ {item['title'][:30]}... {label}")
-        else:
-            print(f"  ❌ {item['title'][:30]}... 已下架，剔除")
-    selected = valid_items
-    print(f"  在售商品: {len(selected)} 条")
-
-    # 如果剔除后不足10条，从候补中补齐（需要验证候补商品在售状态）
-    if len(selected) < max_items:
-        need = max_items - len(selected)
-        # 从已筛选但未被选中的商品中取候补
-        selected_ids = {s.get("sku_id", "") for s in selected}
-        candidates = [r for r in filtered if r.get("sku_id") and r["sku_id"] not in selected_ids]
-        # 批量验证候补商品在售状态（每次最多验证20个）
-        for batch_start in range(0, min(len(candidates), 60), 20):
-            if len(selected) >= max_items:
-                break
-            batch = candidates[batch_start:batch_start + 20]
-            batch_skus = [c["sku_id"] for c in batch]
-            batch_status = api.verify_item_status(batch_skus)
-            for c in batch:
-                if len(selected) >= max_items:
-                    break
-                sid = c.get("sku_id", "")
-                if batch_status.get(sid, False) is not False:
-                    selected.append(c)
-                    print(f"  ✅ 候补: {c['title'][:30]}...")
-    print(f"  最终选取: {len(selected)} 条")
-
-    # ====== 步骤5: p.3.cn 实时查价（网络可能不通，降级用API价格） ======
+    # ====== 步骤3: p.3.cn 实时查价（网络可能不通，降级用API价格） ======
     print("\n💰 查询实时价格...")
     sku_ids = [item.get("sku_id", "") for item in selected if item.get("sku_id")]
     real_prices = api.get_real_price(sku_ids)
@@ -219,7 +179,7 @@ def main():
             if old_price != new_price:
                 print(f"  {item['title'][:20]}... ¥{old_price} → ¥{new_price}")
 
-    # ====== 步骤6: 转链（带推广位） ======
+    # ====== 步骤3: 生成推广链接... ======
     if site_id:
         print("\n🔗 生成推广链接...")
         for item in selected:
@@ -236,7 +196,7 @@ def main():
     else:
         print("\n⚠️ 未配置 site_id，跳过转链（链接不含佣金！）")
 
-    # ====== 步骤5: 显示结果 ======
+    # ====== 步骤4: 显示结果 ======
     print("\n" + "=" * 50)
     print("📋 今日优惠清单：")
     for i, item in enumerate(selected, 1):
@@ -247,7 +207,7 @@ def main():
         link_preview = item.get("link", "")[:40]
         print(f"  {i}. {title} | ¥{price:.1f} {discount} | {link_preview}...")
 
-    # ====== 步骤6: 生成数据 ======
+    # ====== 步骤5: 生成数据 ======
     data = generate_data(selected)
     docs_dir = os.path.join(PROJECT_DIR, "docs")
     save_data(data, docs_dir)
