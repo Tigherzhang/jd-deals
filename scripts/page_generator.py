@@ -67,7 +67,7 @@ def format_item(item):
         "tags": tags,
         "meta": meta,
         "link": item.get("link", ""),
-        "coupon_link": item.get("coupon_link", "") if item.get("coupon_amount", 0) > 0 else "",
+        "coupon_link": "",
         "category": item.get("category", "其他"),
         "discount_pct": discount_pct,
         "sales_30d": item.get("sales_30d", 0),
@@ -103,8 +103,6 @@ def generate_text_promo(items):
         line = f"{emoji} {title} {price_tag}"
         lines.append(line)
 
-        if coupon_link:
-            lines.append(f"🎫 领券：{coupon_link}")
         lines.append(f"🛒 {link}")
         lines.append("")
 

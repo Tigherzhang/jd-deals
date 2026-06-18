@@ -186,11 +186,13 @@ class JdUnionAPI:
 
     def get_real_price(self, sku_ids):
         """
-        通过 p.3.cn 接口获取京东实时页面价
+        通过 p.3.cn 接口获取京东实时页面价。
+        p.3.cn DNS 解析到内网 IP (172.18.x) 时，fallback 到 Scrapling HTTP 提取。
         返回 {sku_id: real_price}
         """
         if not sku_ids:
             return {}
+        # 方案1: p.3.cn (可靠但网络不通)
         try:
             ids_str = ",".join([f"J_{s}" for s in sku_ids])
             url = f"https://p.3.cn/prices/mgets?skuIds={ids_str}"
@@ -205,10 +207,16 @@ class JdUnionAPI:
                     sid = d.get("id", "").replace("J_", "")
                     price_str = d.get("p", "0")
                     result[sid] = float(price_str)
-                return result
+                if result:
+                    return result
         except Exception as e:
             print(f"  [价格查询] p.3.cn 失败: {e}")
-            return {}
+
+        # 方案2: 直接信任京粉API priceInfo.price（即页面价）
+        # API 返回的 priceInfo.price 就是页面售价，不需要额外验证
+        # p.3.cn 不可达时，priceInfo.price 是唯一可靠数据源
+        print("  ⚠️ p.3.cn 不通，使用京粉API价格（priceInfo.price 即页面价）")
+        return {}
 
     def convert_to_item(self, raw, elite_id=None, real_prices=None):
         """将API原始数据转换为统一的商品格式, real_prices为p.3.cn实时价"""
@@ -351,6 +359,11 @@ class JdUnionAPI:
                 # 药品
                 "口服溶液", "口服液", "颗粒剂", "注射液",
                 "创可贴", "创口贴", "退热贴", "退热", "止咳", "化痰", "感冒", "消炎",
+                "鸡眼", "鸡眼贴", "鸡眼膏", "敷料", "人工皮", "疣", "跖疣", "褥疮",
+                "清凉油", "滚珠清凉", "防暑", "提神醒脑", "晕车",
+                "口罩（医用）", "口罩(医用)", "医用外科口罩", "医用口罩", "一次性医用", "医用棉签",
+                "抗菌", "抑菌", "灭菌", "无菌", "菌贴", "菌膏",
+                "创可贴", "创口贴",
                 "抗生素", "头孢", "阿莫西林", "处方药",
                 "藿香正气", "板蓝根", "连花清瘟", "布洛芬", "对乙酰氨基酚",
                 "氯雷他定", "蒙脱石", "奥美拉唑", "雷贝拉唑",

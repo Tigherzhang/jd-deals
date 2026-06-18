@@ -109,13 +109,43 @@ def filter_products(items, config):
             seen.add(sid)
             unique.append(item)
 
-    # 去重（按标题相似度，避免同款变体重复）
-    # 策略：依次检查，如果新商品与已保留的商品标题相似度 > 0.85，视为同款，跳过
+    # ====== 去重第1步：按品牌核心词分组 ======
+    # 同品牌同品类不同规格的商品，只保留销量/price 最优的
+    def _extract_brand_core(title):
+        """提取品牌词+核心品类词，去掉赠品/规格/数量描述"""
+        # 去掉括号、括号内的变体描述
+        base = re.sub(r'[（(【\<].*', '', title)
+        # 去掉"[...]" 方括号内容
+        base = re.sub(r'[［\[]\s*[^］\]]*[］\]]', '', base)
+        # 去掉空格
+        base = re.sub(r'\s+', '', base)
+        # 去掉末尾数量描述（如 "11支"、"10支"、"100只"、"500g*1" 等）
+        base = re.sub(r'[\d]+[\s]*[套支只片枚包盒瓶袋个卷斤克升L][\s]*$', '', base)
+        # 再清理一次空格
+        base = re.sub(r'\s+', '', base)
+        # 取前 20 字作为品牌核心词分组键
+        return base.strip()[:20]
+
+    brand_groups = {}
+    for item in unique:
+        core = _extract_brand_core(item.get("title", ""))
+        if core not in brand_groups:
+            brand_groups[core] = item
+        else:
+            # 保留销量更高或价格更低的
+            existing = brand_groups[core]
+            existing_sales = existing.get("sales_30d", 0)
+            new_sales = item.get("sales_30d", 0)
+            if new_sales > existing_sales or (new_sales == existing_sales and item.get("price", 0) < existing.get("price", 0)):
+                print(f"  🔄 品牌去重: {item['title'][:25]}... (替换销量{existing_sales}->{new_sales})")
+                brand_groups[core] = item
+
+    unique2 = list(brand_groups.values())
+
+    # ====== 去重第2步：按标题相似度去重 ======
     def _clean_title(title):
         """清理标题：去掉规格变体描述"""
-        # 去掉括号内的变体描述
         base = re.sub(r'[（(【\<].*', '', title)
-        # 去掉空格
         base = re.sub(r'\s+', '', base)
         return base.strip()
 
@@ -124,17 +154,15 @@ def filter_products(items, config):
         c1, c2 = _clean_title(t1), _clean_title(t2)
         if not c1 or not c2:
             return 0.0
-        # 用最长公共子串比例
-        ratio = SequenceMatcher(None, c1, c2).ratio()
-        return ratio
+        return SequenceMatcher(None, c1, c2).ratio()
 
-    final_items = [unique[0]]
-    for item in unique[1:]:
+    # 阈值降到 0.75，捕获冷酸灵之类近义词变体
+    final_items = [unique2[0]]
+    for item in unique2[1:]:
         is_dup = False
         for existing in final_items:
             sim = _title_similarity(item.get("title", ""), existing.get("title", ""))
-            if sim > 0.85:
-                # 同款：保留销量更高或价格更低的
+            if sim > 0.75:
                 existing_sales = existing.get("sales_30d", 0)
                 new_sales = item.get("sales_30d", 0)
                 if new_sales > existing_sales or (new_sales == existing_sales and item.get("price", 0) < existing.get("price", 0)):
@@ -195,10 +223,11 @@ def score_product(item):
     return score
 
 
-def rank_and_select(items, max_items=20):
+def rank_and_select(items, max_items=20, min_items=10):
     """
     排序并选取前N条，保证品类多样性
-    食品+日用品优先（75%），化妆品/保健品/母婴/计生作为补充
+    食品+日用品优先（占主导），化妆品/保健品/母婴/计生作为补充（仅10%）
+    如果凑不足 max_items，降到 min_items 即可
     """
     if not items:
         return []
@@ -213,11 +242,16 @@ def rank_and_select(items, max_items=20):
     # 必须真的有优惠
     real_deals = [i for i in items if i.get("orig_price", 0) > i.get("price", 0)]
 
+    # 如果真有优惠的商品不足 min_items，从所有 score 高的 items 中取
+    if len(real_deals) < min_items:
+        print(f"  ⚠️ 真正有优惠的仅 {len(real_deals)} 条，降级从所有商品中取")
+        real_deals = items.copy()
+
     selected = []
 
-    # === 第一轮：优先填充食品和日用品 ===
+    # === 第一轮：优先填充食品和日用品（目标80%，但不强求） ===
     primary_cats = ["食品", "日用品"]
-    primary_target = int(max_items * 0.8)  # 目标80%给食品+日用品
+    primary_target = int(max_items * 0.8)
 
     for item in real_deals:
         if len(selected) >= primary_target:
@@ -229,11 +263,11 @@ def rank_and_select(items, max_items=20):
     food_count = sum(1 for i in selected if i.get("category") == "食品")
     home_count = sum(1 for i in selected if i.get("category") == "日用品")
 
-    # === 第二轮：补充辅助品类（化妆品/母婴/保健品/计生）===
+    # === 第二轮：补充辅助品类（化妆品/母婴/保健品/计生），最多10% ===
     secondary_cats = ["化妆品", "母婴", "保健品", "计生用品"]
-    secondary_limit = int(max_items * 0.25)  # 辅助品类最多25%
-    secondary_count = 0
+    secondary_limit = max(int(max_items * 0.1), 1)  # 辅助品类最多10%，但至少1个
 
+    secondary_count = 0
     for item in real_deals:
         if len(selected) >= max_items:
             break
@@ -242,12 +276,16 @@ def rank_and_select(items, max_items=20):
                 selected.append(item)
                 secondary_count += 1
 
-    # === 第三轮：如果还不够，用高分商品补齐 ===
+    # === 第三轮：如果还不够 max_items，用高分商品补齐 ===
     for item in real_deals:
         if len(selected) >= max_items:
             break
         if item not in selected:
             selected.append(item)
+
+    # 如果连 min_items 都凑不满，接受更少
+    if len(selected) < min_items:
+        print(f"  ⚠️ 最终仅选出 {len(selected)} 条商品（不足 {max_items} 条）")
 
     # 移除评分字段
     for item in selected:
