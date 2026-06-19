@@ -103,7 +103,7 @@ def main():
 
     site_id = jd_config.get("site_id", "")
 
-    channels = {27: "食品", 29: "家居生活", 10: "9.9包邮", 1: "好券商品", 22: "实时热销榜"}
+    # channels = {27: "食品", 29: "家居生活", 10: "9.9包邮", 1: "好券商品", 22: "实时热销榜", 33: "秒杀商品", 23: "大额券"}
     # 食品和日用品频道拉4页，其他频道拉2页
     all_items = []
     for elite_id, name in channels.items():
