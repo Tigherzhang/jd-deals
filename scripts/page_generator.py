@@ -12,16 +12,19 @@ def format_item(item):
     orig = item.get("orig_price", 0)
     price = item.get("price", 0)
     coupon_price = item.get("coupon_price", 0)
-    # 实际显示价
-    display_price = coupon_price if coupon_price > 0 else price
+    coupon_amt = item.get("coupon_amount", 0)
+    # 显示价格 = API 原始价（priceInfo.price），不用券后价
+    # 京东满减券有门槛（如满200减73），单件商品可能达不到门槛
+    # 用户实际看到的价格是 priceInfo.price，不是 coupon_price
+    display_price = price
 
     discount_pct = 0
     if orig > 0 and display_price > 0:
         discount_pct = round((orig - display_price) / orig * 100)
 
     tags = []
-    coupon_amt = item.get("coupon_amount", 0)
-    if coupon_amt > 0:
+    if coupon_amt > 0 and coupon_price > 0 and coupon_price < price:
+        # 只有券后价确实低于原价时才标注
         tags.append(f"🏷 满减{coupon_amt:.0f}元")
     if coupon_price > 0 and coupon_price < price:
         tags.append(f"券后¥{coupon_price:.0f}")

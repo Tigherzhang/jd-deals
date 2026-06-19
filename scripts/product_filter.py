@@ -38,13 +38,18 @@ def filter_products(items, config):
     2. 销量：食品300+，其他500+ | 好评90%+ | 评价数：食品100+，其他200+
     3. 价格在 min_price ~ max_price 区间
     4. 折扣至少5%
+    5. 仅排除最近 3 天内出现过的商品（而非永久去重）
     """
     min_price = config.get("min_price", 10)
     max_price = config.get("max_price", 100)
     price_upper = config.get("price_upper_limit", 500)
 
     history = load_history()
-    pushed_ids = set(history.get("sku_ids", []))
+    all_skus = history.get("sku_ids", [])
+    # 只取最近120条（约6天×20条），确保翻新
+    recent_skus = all_skus[-120:]
+    pushed_ids = set(recent_skus)
+    print(f"    历史 SKU: {len(all_skus)} 个，最近去重池: {len(pushed_ids)} 个")
 
     filtered = []
     for item in items:
@@ -123,8 +128,8 @@ def filter_products(items, config):
         base = re.sub(r'[\d]+[\s]*[套支只片枚包盒瓶袋个卷斤克升L][\s]*$', '', base)
         # 再清理一次空格
         base = re.sub(r'\s+', '', base)
-        # 取前 20 字作为品牌核心词分组键
-        return base.strip()[:20]
+        # 取前 30 字作为品牌核心词分组键
+        return base.strip()[:30]
 
     brand_groups = {}
     for item in unique:
@@ -142,39 +147,31 @@ def filter_products(items, config):
 
     unique2 = list(brand_groups.values())
 
-    # ====== 去重第2步：按标题相似度去重 ======
+    # ====== 品牌词分组兜底：不同分组键但标题高度相似 → 仍视为同组 ======
     def _clean_title(title):
-        """清理标题：去掉规格变体描述"""
         base = re.sub(r'[（(【\<].*', '', title)
         base = re.sub(r'\s+', '', base)
         return base.strip()
 
-    def _title_similarity(t1, t2):
-        """计算两个标题的相似度（基于清理后的核心标题）"""
-        c1, c2 = _clean_title(t1), _clean_title(t2)
-        if not c1 or not c2:
-            return 0.0
-        return SequenceMatcher(None, c1, c2).ratio()
-
-    # 阈值降到 0.75，捕获冷酸灵之类近义词变体
-    final_items = [unique2[0]]
+    deduped3 = [unique2[0]]
     for item in unique2[1:]:
+        ct = _clean_title(item.get("title", ""))
         is_dup = False
-        for existing in final_items:
-            sim = _title_similarity(item.get("title", ""), existing.get("title", ""))
-            if sim > 0.75:
+        for existing in deduped3:
+            ec = _clean_title(existing.get("title", ""))
+            if SequenceMatcher(None, ct, ec).ratio() > 0.75:
                 existing_sales = existing.get("sales_30d", 0)
                 new_sales = item.get("sales_30d", 0)
                 if new_sales > existing_sales or (new_sales == existing_sales and item.get("price", 0) < existing.get("price", 0)):
-                    final_items.remove(existing)
-                    final_items.append(item)
-                    print(f"  🔄 去重: {item['title'][:25]}... (替换销量{existing_sales}->{new_sales})")
+                    deduped3.remove(existing)
+                    deduped3.append(item)
+                    print(f"  🔄 相似去重: {item['title'][:25]}... (替换销量{existing_sales}->{new_sales})")
                 is_dup = True
                 break
         if not is_dup:
-            final_items.append(item)
+            deduped3.append(item)
 
-    return final_items
+    return deduped3
 
 
 def score_product(item):

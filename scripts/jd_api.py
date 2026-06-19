@@ -396,6 +396,25 @@ class JdUnionAPI:
             # 排除检查
             is_excluded = any(kw in all_cats + title for kw in exclude_kw)
 
+            # 大牌保健品白名单：只有含这些词的商品才标记为"保健品"
+            # 不含白名单词但被京东类目归为保健品的 → 视为小众医药器械，排除
+            major_health_kw = [
+                "钙片", "钙尔奇", "钙D", "钙+D", "液体钙", "钙镁",
+                "鱼油", "深海鱼油", "磷脂",
+                "氨糖", "软骨素", "氨糖软骨素",
+                "维生素", "善存", "VC", "VD", "VB", "VE",
+                "蛋白粉", "增肌蛋白",
+                "辅酶", "CoQ10",
+                "褪黑素", "褪黑",
+                "叶酸", "铁剂",
+                "胶原蛋白", "胶原",
+                "阿胶", "燕窝", "蜂胶",
+                "益生菌",
+                "葡萄籽", "蔓越莓", "奶蓟",
+                "枸杞",  # 枸杞在食品里，但留着防漏
+                "钙镁锌", "锌钙", "锌镁",
+            ]
+
             # === 按标题关键词优先判断品类（比类目名更可靠）===
             category = "其他"
 
@@ -449,7 +468,11 @@ class JdUnionAPI:
                 if any(kw in all_cats for kw in food_kw):
                     category = "食品"
                 elif any(kw in all_cats for kw in health_kw):
-                    category = "保健品"
+                    # 保健品 fallback：必须是白名单商品，否则排除
+                    if any(kw in title for kw in major_health_kw):
+                        category = "保健品"
+                    else:
+                        is_excluded = True  # 不属于白名单，排除
                 elif any(kw in all_cats for kw in baby_kw):
                     category = "母婴"
                 elif any(kw in all_cats for kw in cosmetic_kw):

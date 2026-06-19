@@ -107,7 +107,7 @@ def main():
     # 食品和日用品频道拉4页，其他频道拉2页
     all_items = []
     for elite_id, name in channels.items():
-        max_page = 4 if elite_id in (27, 29) else 2
+        max_page = 8 if elite_id == 27 else 6 if elite_id == 29 else 2
         for page in range(1, max_page + 1):
             print(f"\n🔍 获取频道: {name} (eliteId={elite_id}, 第{page}页)")
             items = api.fetch_jingfen_goods(elite_id, page=page, page_size=50)
