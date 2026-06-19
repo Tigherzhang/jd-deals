@@ -261,14 +261,17 @@ class JdUnionAPI:
             # 显示价格：p.3.cn实时价 > priceInfo.price
             display_price = real_price if real_price > 0 else price
 
-            # 券后到手价
+            # 券后到手价（仅当满减门槛已满足时才算有效）
             coupon_price = None
             if coupon_amount > 0:
-                coupon_price = max(display_price - coupon_amount, 0)
-                if lowest_coupon_price > 0 and lowest_coupon_price < coupon_price:
-                    coupon_price = lowest_coupon_price
-                if purchase_price > 0 and purchase_price < coupon_price:
-                    coupon_price = purchase_price
+                # 如果券门槛 <= 商品售价，券可用
+                if threshold_price > 0 and threshold_price <= display_price:
+                    coupon_price = max(display_price - coupon_amount, 0)
+                    if lowest_coupon_price > 0 and lowest_coupon_price < coupon_price:
+                        coupon_price = lowest_coupon_price
+                    if purchase_price > 0 and purchase_price < coupon_price:
+                        coupon_price = purchase_price
+                # 否则券不可用，不显示券后价（只标注有券）
 
             # 原价
             if threshold_price > 0 and threshold_price > display_price:
