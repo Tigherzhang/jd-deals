@@ -147,7 +147,7 @@ def filter_products(items, config):
 
     unique2 = list(brand_groups.values())
 
-    # ====== 品牌词分组兜底：不同分组键但标题高度相似 → 仍视为同组 ======
+    # ====== 品牌词分组兜底：不同分组键但标题相似 + 价格相同 → 同款 ======
     def _clean_title(title):
         base = re.sub(r'[（(【\<].*', '', title)
         base = re.sub(r'\s+', '', base)
@@ -159,7 +159,11 @@ def filter_products(items, config):
         is_dup = False
         for existing in deduped3:
             ec = _clean_title(existing.get("title", ""))
-            if SequenceMatcher(None, ct, ec).ratio() > 0.75:
+            sim = SequenceMatcher(None, ct, ec).ratio()
+            # 条件1：标题相似 > 0.70 且价格相同 → 同款（如丝飘纸品不同规格/渠道）
+            # 条件2：标题相似 > 0.75 → 同款（如冷酸灵/HERM'S 变体）
+            is_same_price = abs(item.get("price", 0) - existing.get("price", 0)) < 0.01
+            if (sim > 0.70 and is_same_price) or sim > 0.75:
                 existing_sales = existing.get("sales_30d", 0)
                 new_sales = item.get("sales_30d", 0)
                 if new_sales > existing_sales or (new_sales == existing_sales and item.get("price", 0) < existing.get("price", 0)):
