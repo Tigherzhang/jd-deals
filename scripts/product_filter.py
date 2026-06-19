@@ -105,14 +105,30 @@ def filter_products(items, config):
 
         filtered.append(item)
 
-    # 去重（按 SKU ID）
-    seen = set()
+    # 去重（按 SKU ID，跳过空 SKU）
+    seen_skus = set()
     unique = []
     for item in filtered:
         sid = item.get("sku_id", "")
-        if sid not in seen:
-            seen.add(sid)
-            unique.append(item)
+        if not sid or sid in seen_skus:
+            continue
+        seen_skus.add(sid)
+        unique.append(item)
+
+    # 去重（按 jingfen materialUrl 链接，同一链接只取一个）
+    seen_links = set()
+    unique2 = []
+    for item in unique:
+        link = item.get("link", "")
+        if not link:
+            unique2.append(item)
+            continue
+        # 标准化链接：去掉协议和尾参数
+        normalized = link.replace("https://", "").replace("http://", "").split("?")[0].split("#")[0]
+        if normalized not in seen_links:
+            seen_links.add(normalized)
+            unique2.append(item)
+    unique = unique2
 
     # ====== 去重第1步：按品牌核心词分组 ======
     # 同品牌同品类不同规格的商品，只保留销量/price 最优的
@@ -157,18 +173,17 @@ def filter_products(items, config):
     for item in unique2[1:]:
         ct = _clean_title(item.get("title", ""))
         is_dup = False
-        for existing in deduped3:
+        for idx, existing in enumerate(deduped3):
             ec = _clean_title(existing.get("title", ""))
             sim = SequenceMatcher(None, ct, ec).ratio()
-            # 条件1：标题相似 > 0.70 且价格相同 → 同款（如丝飘纸品不同规格/渠道）
-            # 条件2：标题相似 > 0.75 → 同款（如冷酸灵/HERM'S 变体）
+            # 同款判断：1)标题相似+价格相同(0.70) 或 2)标题高度相似(0.75)
+            # 但必须 SKU 不同（不同的商品ID）
             is_same_price = abs(item.get("price", 0) - existing.get("price", 0)) < 0.01
             if (sim > 0.70 and is_same_price) or sim > 0.75:
                 existing_sales = existing.get("sales_30d", 0)
                 new_sales = item.get("sales_30d", 0)
                 if new_sales > existing_sales or (new_sales == existing_sales and item.get("price", 0) < existing.get("price", 0)):
-                    deduped3.remove(existing)
-                    deduped3.append(item)
+                    deduped3[idx] = item  # in-place replace
                     print(f"  🔄 相似去重: {item['title'][:25]}... (替换销量{existing_sales}->{new_sales})")
                 is_dup = True
                 break
