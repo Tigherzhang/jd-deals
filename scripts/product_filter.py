@@ -77,9 +77,9 @@ def filter_products(items, config):
         if sku_id in pushed_ids:
             continue
 
-        # 折扣至少5%
+        # 折扣检查仅在 origin > price 时才做（现在 orig_price = price 默认无折扣）
         orig = item.get("orig_price", 0)
-        if orig > 0 and price > 0:
+        if orig > 0 and price > 0 and orig > price:
             discount = (orig - price) / orig
             if discount < 0.05:
                 continue
@@ -130,22 +130,29 @@ def filter_products(items, config):
             unique2.append(item)
     unique = unique2
 
-    # ====== 去重第1步：按品牌核心词分组 ======
-    # 同品牌同品类不同规格的商品，只保留销量/price 最优的
+    # ====== 去重第1步：按"品牌+核心品类"分组 ======
     def _extract_brand_core(title):
-        """提取品牌词+核心品类词，去掉赠品/规格/数量描述"""
-        # 去掉括号、括号内的变体描述
-        base = re.sub(r'[（(【\<].*', '', title)
-        # 去掉"[...]" 方括号内容
-        base = re.sub(r'[［\[]\s*[^］\]]*[］\]]', '', base)
-        # 去掉空格
+        """从标题中提取品牌名+核心品类词，用于同款去重"""
+        # 1. 去掉【】方括号内容（如【山姆同款】、【最强组合】）
+        base = re.sub(r'【[^】]*】', '', title)
+        # 2. 去掉（）括号内容
+        base = re.sub(r'[（(][^）)]*[）)]', '', base)
+        # 3. 去掉空格
         base = re.sub(r'\s+', '', base)
-        # 去掉末尾数量描述（如 "11支"、"10支"、"100只"、"500g*1" 等）
-        base = re.sub(r'[\d]+[\s]*[套支只片枚包盒瓶袋个卷斤克升L][\s]*$', '', base)
-        # 再清理一次空格
-        base = re.sub(r'\s+', '', base)
-        # 取前 30 字作为品牌核心词分组键
-        return base.strip()[:30]
+        # 4. 提取"品牌词+核心品类词"
+        #    匹配：英文品牌 + 任意中间内容 + 品类词，非贪婪
+        kw_match = re.match(
+            r'([A-Za-z\'\-]+).*?'
+            r'(牙刷|牙膏|沐浴|洗发|洗衣|毛巾|浴巾|纸巾|抽纸|手套|衣架|'
+            r'拖把|扫把|垃圾袋|保鲜|香皂|肥皂|洗手|洗脸|面巾|湿巾|'
+            r'驱蚊|灭蚊|消毒|马桶|下水|挂钩|收纳|遮阳|雨伞|保温杯|'
+            r'水杯|锅|刀|砧板|碗|筷|饭盒|口罩)',
+            base, re.IGNORECASE
+        )
+        if kw_match:
+            return f"{kw_match.group(1).lower()}{kw_match.group(2)}"
+        # 纯中文品牌：取前25字
+        return base.strip()[:25]
 
     brand_groups = {}
     for item in unique:
@@ -169,6 +176,9 @@ def filter_products(items, config):
         base = re.sub(r'\s+', '', base)
         return base.strip()
 
+    if not unique2:
+        return []
+
     deduped3 = [unique2[0]]
     for item in unique2[1:]:
         ct = _clean_title(item.get("title", ""))
@@ -176,14 +186,13 @@ def filter_products(items, config):
         for idx, existing in enumerate(deduped3):
             ec = _clean_title(existing.get("title", ""))
             sim = SequenceMatcher(None, ct, ec).ratio()
-            # 同款判断：1)标题相似+价格相同(0.70) 或 2)标题高度相似(0.75)
-            # 但必须 SKU 不同（不同的商品ID）
+            # 同款判断：a) 标题相似+价格相同(0.70) 或 b) 标题高度相似(0.75)
             is_same_price = abs(item.get("price", 0) - existing.get("price", 0)) < 0.01
             if (sim > 0.70 and is_same_price) or sim > 0.75:
                 existing_sales = existing.get("sales_30d", 0)
                 new_sales = item.get("sales_30d", 0)
                 if new_sales > existing_sales or (new_sales == existing_sales and item.get("price", 0) < existing.get("price", 0)):
-                    deduped3[idx] = item  # in-place replace
+                    deduped3[idx] = item
                     print(f"  🔄 相似去重: {item['title'][:25]}... (替换销量{existing_sales}->{new_sales})")
                 is_dup = True
                 break

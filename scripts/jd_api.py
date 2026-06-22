@@ -273,13 +273,10 @@ class JdUnionAPI:
                         coupon_price = purchase_price
                 # 否则券不可用，不显示券后价（只标注有券）
 
-            # 原价
-            if threshold_price > 0 and threshold_price > display_price:
-                orig_price = threshold_price
-            elif real_price > 0 and price > real_price:
-                orig_price = price
-            else:
-                orig_price = display_price + coupon_amount if coupon_amount else display_price * 1.3
+            # 原价 = API 原始价（京粉 API priceInfo.price 即京东页面售价）
+            # 不再用 thresholdPrice（券门槛，不是商品原价）或 price*1.3（虚假膨胀）
+            # 京东页面上没有打折标注的商品，原价 = 现价
+            orig_price = display_price
 
             # 佣金
             commission_info = raw.get("commissionInfo") or {}

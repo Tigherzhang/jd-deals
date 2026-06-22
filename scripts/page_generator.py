@@ -9,28 +9,27 @@ from product_filter import get_category_emoji
 
 def format_item(item):
     """将商品格式化为网页显示的条目"""
-    orig = item.get("orig_price", 0)
     price = item.get("price", 0)
-    coupon_price = item.get("coupon_price", 0)
     coupon_amt = item.get("coupon_amount", 0)
-    # 显示价格 = API 原始价（priceInfo.price），不用券后价
-    # 京东满减券有门槛（如满200减73），单件商品可能达不到门槛
-    # 用户实际看到的价格是 priceInfo.price，不是 coupon_price
-    display_price = price
+    coupon_price = item.get("coupon_price", 0)
+    # 原价：只有当 API 返回了有效原价且 > 现价时才显示
+    orig = item.get("orig_price", 0)
+    show_orig = orig > price * 1.05 if orig > 0 else False  # 至少5%差异才算真折扣
 
+    display_price = price
     discount_pct = 0
-    if orig > 0 and display_price > 0:
+    if show_orig and orig > 0:
         discount_pct = round((orig - display_price) / orig * 100)
 
     tags = []
+    # 不显示折扣%标签（折扣可能基于满减门槛，不准确）
+    # 不显示满减券标签（券门槛不可判定）
     if coupon_amt > 0 and coupon_price > 0 and coupon_price < price:
-        # 只有券后价确实低于原价时才标注
-        tags.append(f"🏷 满减{coupon_amt:.0f}元")
-    if coupon_price > 0 and coupon_price < price:
-        tags.append(f"券后¥{coupon_price:.0f}")
-    if discount_pct >= 20:
+        if show_orig:
+            tags.append(f"券后¥{coupon_price:.0f}")
+    if show_orig and discount_pct >= 20:
         tags.append(f"🔥 {discount_pct}折")
-    if discount_pct >= 50:
+    if show_orig and discount_pct >= 50:
         tags.append("⚡超值")
     if display_price <= 19.9:
         tags.append("💎好价")
