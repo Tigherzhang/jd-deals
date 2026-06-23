@@ -261,17 +261,19 @@ class JdUnionAPI:
             # 显示价格：p.3.cn实时价 > priceInfo.price
             display_price = real_price if real_price > 0 else price
 
-            # 券后到手价（仅当满减门槛已满足时才算有效）
+            # 券后价计算：
+            # 1. 优先使用 lowestCouponPrice（京东官方计算的最低券后价，最可靠）
+            # 2. 如果 lowestCouponPrice 无效，再尝试 threshold + amount 计算
             coupon_price = None
-            if coupon_amount > 0:
-                # 如果券门槛 <= 商品售价，券可用
-                if threshold_price > 0 and threshold_price <= display_price:
-                    coupon_price = max(display_price - coupon_amount, 0)
-                    if lowest_coupon_price > 0 and lowest_coupon_price < coupon_price:
-                        coupon_price = lowest_coupon_price
-                    if purchase_price > 0 and purchase_price < coupon_price:
-                        coupon_price = purchase_price
-                # 否则券不可用，不显示券后价（只标注有券）
+            if lowest_coupon_price > 0 and lowest_coupon_price < display_price:
+                # lowestCouponPrice 是京东官方券后价，直接采用
+                coupon_price = lowest_coupon_price
+            elif coupon_amount > 0 and threshold_price > 0 and threshold_price <= display_price:
+                # 兜底：用券面额 - 门槛计算
+                coupon_price = max(display_price - coupon_amount, 0)
+            elif coupon_amount > 0 and threshold_price == 0:
+                # 无门槛券，直接用
+                coupon_price = max(display_price - coupon_amount, 0)
 
             # 原价 = API 原始价（京粉 API priceInfo.price 即京东页面售价）
             # 不再用 thresholdPrice（券门槛，不是商品原价）或 price*1.3（虚假膨胀）

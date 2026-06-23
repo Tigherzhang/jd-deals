@@ -67,24 +67,18 @@ async function loadData(){
 
 function buildTextPromo(){
   // 纯文字版，微信群里直接粘贴
+  // 价格统一使用 _final_price（后端已确定是券后价还是页面价）
   const now = new Date();
   const wd=['日','一','二','三','四','五','六'][now.getDay()];
   let lines = [];
   lines.push('📅 '+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 周'+wd+' 京东优惠精选');
   lines.push('');
   cachedData.items.forEach((item,i)=>{
-    // 价格：有券后价显示券后价
-    let priceTag = '💰 ¥'+item.price;
-    if(item._raw_coupon_amount > 0 && item._raw_coupon_price > 0){
-      priceTag = '💰 ¥'+Number(item._raw_coupon_price).toFixed(0);
-    }
-    // 折扣标签
-    const orig = Number(item.orig_price || 0);
-    const price = Number(item.price || 0);
-    const d = orig>price ? ((orig-price)/orig*100).toFixed(0) : '';
-    const dTag = d ? ' ('+d+'折)' : '';
+    // 统一使用 _final_price
+    const finalPrice = item._final_price !== undefined ? item._final_price : Number(item.price);
+    let priceTag = '💰 ¥'+finalPrice.toFixed(2);
 
-    lines.push((item.emoji||'📦')+' '+(item.title||'')+' '+priceTag+dTag);
+    lines.push((item.emoji||'📦')+' '+(item.title||'')+' '+priceTag);
     lines.push('🛒 '+item.link);
     lines.push('');
   });
@@ -116,9 +110,11 @@ function render(data){
   }
   let html='';
   data.items.forEach(item=>{
+    // 统一使用 _final_price
+    const fp = item._final_price !== undefined ? item._final_price : Number(item.price);
     html+='<div class="product-card"><div class="product-name">'+item.emoji+' '+item.title+'</div><div class="price-row">';
     if(item.orig_price)html+='<span class="orig-price">¥'+item.orig_price+'</span>';
-    html+='<span class="final-price">💰 ¥'+item.price+'</span></div>';
+    html+='<span class="final-price">💰 ¥'+fp.toFixed(2)+'</span></div>';
     if(item.tags&&item.tags.length){
       html+='<div class="tags">';
       item.tags.forEach(t=>{
