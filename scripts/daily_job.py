@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 京东副业 PCS - 每日主脚本
-获取优惠商品 → 实时查价 → 转链 → 筛选 → 生成网页 → git push
+获取优惠商品 → 解析真实SKU → 浏览器验价 → 转链 → 筛选 → 生成网页 → git push
 """
 import json
 import os
@@ -14,6 +14,7 @@ PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, SCRIPT_DIR)
 
 from jd_api import JdUnionAPI
+from jd_fetcher import verify_prices
 from product_filter import filter_products, rank_and_select, load_history, save_history
 from page_generator import generate_data, save_data
 
@@ -157,28 +158,21 @@ def main():
             # 已经是 item.jd.com 格式
             print(f"  ✓ {item['title'][:30]}... (已是正确格式)")
 
-    # ====== 步骤3: p.3.cn 实时查价（网络可能不通，降级用API价格） ======
-    print("\n💰 查询实时价格...")
-    sku_ids = [item.get("sku_id", "") for item in selected if item.get("sku_id")]
-    real_prices = api.get_real_price(sku_ids)
-    print(f"  获取到 {len(real_prices)} 个实时价格")
-    if not real_prices:
-        print("  ⚠️ p.3.cn 不通，使用京粉API价格（priceInfo.price 即页面价）")
+    # ====== 步骤4: 浏览器验价 ======
+    print("\n🔍 浏览器验价中...")
+    verified, failed, logs = verify_prices(selected, tolerance=0.5)
+    verified_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+    for item in verified:
+        item["price_verified"] = True
+        item["verified_at"] = verified_at
+    for log in logs:
+        print(log)
+    selected = verified
+    print(f"  ✅ 验价通过 {len(selected)} 条, ❌ 淘汰 {len(failed)} 条")
+    if not selected:
+        print("  ⚠️ 验价后无商品通过，仍推送空列表")
 
-    # 用实时价格更新
-    for item in selected:
-        sid = item.get("sku_id", "")
-        if sid in real_prices and real_prices[sid] > 0:
-            old_price = item["price"]
-            new_price = real_prices[sid]
-            item["price"] = new_price
-            # 如果原价低于新价格，调整原价
-            if item.get("orig_price", 0) < new_price:
-                item["orig_price"] = new_price * 1.3
-            if old_price != new_price:
-                print(f"  {item['title'][:20]}... ¥{old_price} → ¥{new_price}")
-
-    # ====== 步骤3: 生成推广链接... ======
+    # ====== 步骤4: 生成推广链接... ======
     if site_id:
         print("\n🔗 生成推广链接...")
         for item in selected:

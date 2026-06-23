@@ -79,6 +79,9 @@ def format_item(item):
         "_raw_price": price,
         "_raw_coupon_price": coupon_price,
         "_raw_coupon_amount": coupon_amt,
+        # 验价元数据（内部字段，不展示到网页）
+        "price_verified": item.get("price_verified", True),
+        "verified_at": item.get("verified_at", ""),
     }
 
 
