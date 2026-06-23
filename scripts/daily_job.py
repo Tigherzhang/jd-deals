@@ -211,7 +211,7 @@ def main():
         sku_id = item.get("sku_id", "")
         if sku_id:
             history.setdefault("sku_ids", []).append(sku_id)
-    history["sku_ids"] = history["sku_ids"][-300:]
+    history["sku_ids"] = history["sku_ids"][-350:]
     today = time.strftime("%Y-%m-%d")
     history.setdefault("dates", {})[today] = len(selected)
     save_history(history)

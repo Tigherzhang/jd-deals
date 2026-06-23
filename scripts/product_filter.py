@@ -38,7 +38,7 @@ def filter_products(items, config):
     2. 销量：食品300+，其他500+ | 好评90%+ | 评价数：食品100+，其他200+
     3. 价格在 min_price ~ max_price 区间
     4. 折扣至少5%
-    5. 仅排除最近 3 天内出现过的商品（而非永久去重）
+    5. 仅排除最近 7 天内出现过的商品（而非永久去重）
     """
     min_price = config.get("min_price", 10)
     max_price = config.get("max_price", 100)
@@ -46,8 +46,8 @@ def filter_products(items, config):
 
     history = load_history()
     all_skus = history.get("sku_ids", [])
-    # 只取最近120条（约6天×20条），确保翻新
-    recent_skus = all_skus[-120:]
+    # 只取最近140条（约7天×20条），确保7天内不重复
+    recent_skus = all_skus[-140:]
     pushed_ids = set(recent_skus)
     print(f"    历史 SKU: {len(all_skus)} 个，最近去重池: {len(pushed_ids)} 个")
 
