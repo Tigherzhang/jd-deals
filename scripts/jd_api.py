@@ -502,6 +502,7 @@ class JdUnionAPI:
                 "title": title,
                 "price": float(display_price) if display_price else 0,
                 "coupon_price": float(coupon_price) if coupon_price else 0,
+                "purchase_price": float(purchase_price) if purchase_price else 0,
                 "orig_price": float(orig_price) if orig_price else 0,
                 "coupon_amount": float(coupon_amount) if coupon_amount else 0,
                 "commission": float(commission) if commission else 0,
