@@ -98,9 +98,11 @@ def generate_text_promo(items):
     """
     生成微信群分享用的纯文字格式
     🍖 良品铺子 原味肉脯 500g 💰 ¥24.90
-    🛒 https://item.jd.com/xxx.html
+    🎫 领券 https://coupon.m.jd.com/xxx
+    🛒 商品 https://item.jd.com/xxx.html
 
     价格统一使用 _final_price（已确定是券后价还是页面价）
+    券链接和商品链接都带上，方便手动转链
     """
     lines = []
     lines.append(f"📅 {time.strftime('%Y年%m月%d日')} 京东优惠精选\n")
@@ -109,6 +111,7 @@ def generate_text_promo(items):
         title = item.get("title", "")
         final_price = item.get("_final_price", item.get("price", 0))
         link = item.get("link", "")
+        coupon_link = item.get("coupon_link", "")
 
         # 统一价格标签
         price_tag = f"💰 ¥{final_price:.2f}"
@@ -116,6 +119,9 @@ def generate_text_promo(items):
         line = f"{emoji} {title} {price_tag}"
         lines.append(line)
 
+        # 有券链接就带上
+        if coupon_link:
+            lines.append(f"🎫 {coupon_link}")
         lines.append(f"🛒 {link}")
         lines.append("")
 
