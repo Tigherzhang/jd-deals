@@ -1,43 +1,150 @@
-<!-- superpowers-zh:begin (do not edit between these markers) -->
-# Superpowers-ZH 中文增强版
+# JD CPS 京东优惠精选 - 项目文档
 
-本项目已安装 superpowers-zh 技能框架（20 个 skills）。
+## 项目概述
 
-## 核心规则
+京东联盟 CPS 推广项目：每日自动采集京东京粉精选优惠商品，生成静态网页发布到 GitHub Pages，支持微信群一键分享。
 
-1. **收到任务时，先检查是否有匹配的 skill** — 哪怕只有 1% 的可能性也要检查
-2. **设计先于编码** — 收到功能需求时，先用 brainstorming skill 做需求分析
-3. **测试先于实现** — 写代码前先写测试（TDD）
-4. **验证先于完成** — 声称完成前必须运行验证命令
+- **GitHub Pages**: https://tigherzhang.github.io/jd-deals/
+- **仓库**: https://github.com/Tigherzhang/jd-deals
+- **数据来源**: 京粉API（京东联盟开放平台）
 
-## 可用 Skills
+## 架构
 
-Skills 位于 `.claude/skills/` 目录，每个 skill 有独立的 `SKILL.md` 文件。
+```
+京粉API → jd_api.py(convert_to_item) → product_filter.py(筛选+去重)
+  → jd_fetcher.py(浏览器验价) → page_generator.py(格式化)
+  → data.json + index.html → GitHub Pages
+```
 
-- **brainstorming**: 在任何创造性工作之前必须使用此技能——创建功能、构建组件、添加功能或修改行为。在实现之前先探索用户意图、需求和设计。
-- **chinese-code-review**: 中文 review 沟通参考——话术模板、分级标注（必须修复/建议修改/仅供参考）、国内团队常见反模式应对。仅在用户显式 /chinese-code-review 时调用，不要根据上下文自动触发。
-- **chinese-commit-conventions**: 中文 commit 与 changelog 配置参考——Conventional Commits 中文适配、commitlint/husky/commitizen 中文模板、conventional-changelog 中文配置。仅在用户显式 /chinese-commit-conventions 时调用，不要根据上下文自动触发。
-- **chinese-documentation**: 中文文档排版参考——中英文空格、全半角标点、术语保留、链接格式、中文文案排版指北约定。仅在用户显式 /chinese-documentation 时调用，不要根据上下文自动触发。
-- **chinese-git-workflow**: 国内 Git 平台配置参考——Gitee、Coding.net、极狐 GitLab、CNB 的 SSH/HTTPS/凭据/CI 接入差异与镜像同步配置。仅在用户显式 /chinese-git-workflow 时调用，不要根据上下文自动触发。
-- **dispatching-parallel-agents**: 当面对 2 个以上可以独立进行、无共享状态或顺序依赖的任务时使用
-- **executing-plans**: 当你有一份书面实现计划需要在单独的会话中执行，并设有审查检查点时使用
-- **finishing-a-development-branch**: 当实现完成、所有测试通过、需要决定如何集成工作时使用——通过提供合并、PR 或清理等结构化选项来引导开发工作的收尾
-- **mcp-builder**: MCP 服务器构建方法论 — 系统化构建生产级 MCP 工具，让 AI 助手连接外部能力
-- **receiving-code-review**: 收到代码审查反馈后、实施建议之前使用，尤其当反馈不明确或技术上有疑问时——需要技术严谨性和验证，而非敷衍附和或盲目执行
-- **requesting-code-review**: 完成任务、实现重要功能或合并前使用，用于验证工作成果是否符合要求
-- **subagent-driven-development**: 当在当前会话中执行包含独立任务的实现计划时使用
-- **systematic-debugging**: 遇到任何 bug、测试失败或异常行为时使用，在提出修复方案之前执行
-- **test-driven-development**: 在实现任何功能或修复 bug 时使用，在编写实现代码之前
-- **using-git-worktrees**: 当需要开始与当前工作区隔离的功能开发，或在执行实现计划之前使用——通过原生工具或 git worktree 回退机制确保隔离工作区存在
-- **using-superpowers**: 在开始任何对话时使用——确立如何查找和使用技能，要求在任何响应（包括澄清性问题）之前调用 Skill 工具
-- **verification-before-completion**: 在宣称工作完成、已修复或测试通过之前使用，在提交或创建 PR 之前——必须运行验证命令并确认输出后才能声称成功；始终用证据支撑断言
-- **workflow-runner**: 在 Claude Code / OpenClaw / Cursor 中直接运行 agency-orchestrator YAML 工作流——无需 API key，使用当前会话的 LLM 作为执行引擎。当用户提供 .yaml 工作流文件或要求多角色协作完成任务时触发。
-- **writing-plans**: 当你有规格说明或需求用于多步骤任务时使用，在动手写代码之前
-- **writing-skills**: 当创建新技能、编辑现有技能或在部署前验证技能是否有效时使用
+## 核心模块
 
-## 如何使用
+### scripts/jd_api.py - 京东联盟 API
+- `JdUnionAPI`: API 封装，签名、请求
+- `fetch_jingfen_goods()`: 获取京粉精选商品（5个频道）
+- `convert_to_item()`: 将 API 原始数据转为统一商品格式
+- `resolve_real_sku()`: 从 jingfen 链接302跳转解析真实京东SKU
+- `get_promotion_link()`: 生成推广短链接
 
-当任务匹配某个 skill 时，使用 `Skill` 工具加载对应 skill 并严格遵循其流程。绝不要用 Read 工具读取 SKILL.md 文件。
+### scripts/product_filter.py - 筛选与去重
+- `filter_products()`: 价格/销量/好评率/品类过滤
+- `rank_and_select()`: 评分排序 + 品类多样性选取
+- 7天去重：SKU去重 + 标题相似度去重（>0.90视为重复）
 
-如果你认为哪怕只有 1% 的可能性某个 skill 适用于你正在做的事情，你必须调用该 skill 检查。
-<!-- superpowers-zh:end -->
+### scripts/jd_fetcher.py - 浏览器验价
+- `verify_prices()`: Playwright 打开京东移动端商品页验证价格
+- 宽松策略：页面需登录/暂无定价时保留商品
+- 仅价格格式不一致时淘汰
+
+### scripts/page_generator.py - 数据生成
+- `format_item()`: 格式化单个商品
+- `generate_text_promo()`: 生成微信群分享文字版
+- `generate_data()`: 生成 data.json
+
+### docs/index.html - 前端展示
+- 网页卡片展示 + 一键复制全部优惠
+
+### scripts/daily_job.py - 每日主脚本
+- 获取商品 → 筛选 → 解析SKU → 验价 → 转链 → 生成数据 → git push
+
+## 价格体系
+
+### 核心原则
+**三个界面价格必须统一：网页展示 = 一键复制文字 = 京东下单页**
+
+### 价格计算逻辑
+```
+price = priceInfo.price（京东页面售价）
+coupon_amt = couponList[].discount（券面额，取可用券中最大的）
+coupon_price = price - coupon_amt（券后价，仅当券可用时）
+  券可用条件：couponList[].quota <= price
+_final_price = coupon_price（有可用券）或 price（无可用券）
+```
+
+### 关键字段说明
+- `priceInfo.price`: 京东页面售价 ✅ 可信
+- `priceInfo.lowestCouponPrice`: API最低券后价 ❌ 可能含多件叠加
+- `purchasePriceInfo.purchasePrice`: 含平台补贴/新人优惠 ❌ 不可控
+- `purchasePriceInfo.thresholdPrice`: 购买数量总价（=price×purchaseNum）❌ 不是券门槛
+- `couponList[].quota`: 券门槛 ✅ 唯一可信
+- `couponList[].discount`: 券面额 ✅ 唯一可信
+- `couponList[].link`: 领券链接 ✅ 可信
+- `purchaseNum`: 总是1（API不提供多件价格）
+
+### 三界面价格
+| 界面 | 展示内容 |
+|------|---------|
+| 网页 | 💰 ¥XX.XX（_final_price）+ ~~原价~~ |
+| 一键复制 | 💰 ¥XX.XX + 🎫 券链接 + 🛒 商品链接 |
+| 京东页面 | 用户领券后 = _final_price |
+
+## 去重策略
+
+### 双重去重
+1. **SKU去重**: 从 `history.json` 读取最近140个SKU（约7天×20条），不在池中才保留
+2. **标题相似度去重**: 清理标题（去掉括号内容、空格）后 SequenceMatcher 相似度 >0.90 视为重复
+
+### 去重历史
+- `history.json`: 存 `sku_ids` 和 `titles` 各最近350条
+- 注意：`spuid`（京粉ID）≠ 京东真实SKU，两者格式不同，不能直接比对
+
+## 自动化
+
+### macOS launchd（本机定时任务）
+- 配置文件: `~/Library/LaunchAgents/com.jd-pcs.daily.plist`
+- 时间: 每天 08:30
+- 脚本: `scripts/daily_job.py`
+- 日志: `logs/daily-job.log` / `logs/daily-job.err`
+
+### GitHub Actions（备用）
+- 配置: `.github/workflows/daily-sync.yml`
+- 时间: UTC 00:30 = 北京时间 08:30
+- cron: `'30 0 * * *'`
+
+## 频道配置
+
+| elite_id | 名称 | 页数 |
+|----------|------|------|
+| 27 | 食品 | 8页 |
+| 29 | 家居生活 | 6页 |
+| 10 | 9.9包邮 | 2页 |
+| 1 | 好券商品 | 2页 |
+| 22 | 实时热销榜 | 2页 |
+
+## 筛选规则
+
+| 条件 | 食品 | 其他 |
+|------|------|------|
+| 价格区间 | 10-100元 | 10-100元 |
+| 月销量 | 300+ | 500+ |
+| 评价数 | 100+ | 200+ |
+| 好评率 | 90%+ | 90%+ |
+| 折扣 | 至少5% | 至少5% |
+| 价格上限 | 500元 | 500元 |
+
+## 品类分类
+
+优先级：特定日用品 → 食品 → 计生用品 → 化妆品 → 母婴 → 保健品 → 通用日用品
+
+排除品类：小众/工业/药品/医疗器械/专业工具/宠物用品/数码配件等
+
+## 配置
+
+优先读 `config.json`，fallback 到环境变量（GitHub Actions 使用）
+
+环境变量: `JD_APP_KEY`, `JD_SECRET_KEY`, `JD_SITE_ID`, `JD_UNION_ID`
+
+## 已知限制
+
+1. **京东页面频繁需登录**: headless Chromium 触发京东CFE风控，验价保留商品但不验证
+2. **API超时**: 部分请求超时（15秒），脚本继续执行不中断
+3. **转链失败**: `JD_SITE_ID` 未配置时无法转链（链接不含佣金）
+4. **无多件价格**: API `purchaseNum` 总是1，不提供多件优惠价
+5. **p.3.cn 不通**: 实时价格查询不可达，使用京粉API `priceInfo.price`
+
+## 近期修复记录
+
+- 2026-06-27: 修复价格不一致（用 price-coupon 替代 lowestCouponPrice）
+- 2026-06-27: 修复券链接全为空（page_generator 硬编码为空字符串）
+- 2026-06-27: 修复券门槛判断错误（用 couponList[].quota 替代 thresholdPrice）
+- 2026-06-27: 修复7天去重失效（spuid ≠ 真实SKU，新增标题相似度去重）
+- 2026-06-27: 一键复制增加券链接🎫（前后端同步）
