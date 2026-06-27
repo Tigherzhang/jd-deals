@@ -76,6 +76,21 @@ def filter_products(items, config):
         # 去重：不推已推过的商品
         if sku_id in pushed_ids:
             continue
+        # 标题相似度去重（防止ID格式不一致导致漏判）
+        # 清理标题：去掉方括号/括号内容、空格
+        title_clean = re.sub(r'[【\[（\(\<].*?([】\)\)>]|$)', '', item.get("title", "")).strip()
+        title_clean = re.sub(r'\s+', '', title_clean)
+        hist_titles = history.get("titles", [])
+        is_dup = False
+        for hist_title in hist_titles:
+            hist_clean = re.sub(r'[【\[（\(\<].*?([】\)\)>]|$)', '', hist_title).strip()
+            hist_clean = re.sub(r'\s+', '', hist_clean)
+            sim = SequenceMatcher(None, title_clean, hist_clean).ratio()
+            if sim > 0.90:
+                is_dup = True
+                break
+        if is_dup:
+            continue
 
         # 折扣检查仅在 origin > price 时才做（现在 orig_price = price 默认无折扣）
         orig = item.get("orig_price", 0)

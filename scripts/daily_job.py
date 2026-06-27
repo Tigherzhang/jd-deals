@@ -147,7 +147,6 @@ def main():
         if material_url and "jingfen.jd.com" in material_url:
             real_sku = api.resolve_real_sku(material_url)
             if real_sku:
-                old_link = item["link"]
                 item["link"] = f"https://item.jd.com/{real_sku}.html"
                 item["sku_id"] = real_sku
                 print(f"  ✅ {item['title'][:30]}... → {real_sku}")
@@ -156,6 +155,10 @@ def main():
             time.sleep(0.3)
         else:
             # 已经是 item.jd.com 格式
+            import re
+            sku_match = re.search(r'item\.jd\.com/(\d+)\.html', material_url)
+            if sku_match:
+                item["sku_id"] = sku_match.group(1)
             print(f"  ✓ {item['title'][:30]}... (已是正确格式)")
 
     # ====== 步骤4: 浏览器验价 ======
@@ -211,7 +214,11 @@ def main():
         sku_id = item.get("sku_id", "")
         if sku_id:
             history.setdefault("sku_ids", []).append(sku_id)
+        title = item.get("title", "")
+        if title:
+            history.setdefault("titles", []).append(title)
     history["sku_ids"] = history["sku_ids"][-350:]
+    history["titles"] = history.get("titles", [])[-350:]
     today = time.strftime("%Y-%m-%d")
     history.setdefault("dates", {})[today] = len(selected)
     save_history(history)
