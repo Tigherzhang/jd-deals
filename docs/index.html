@@ -68,6 +68,7 @@ async function loadData(){
 function buildTextPromo(){
   // 纯文字版，微信群里直接粘贴
   // 价格统一使用 _final_price（后端已确定是券后价还是页面价）
+  // 券链接和商品链接都带上，方便手动转链
   const now = new Date();
   const wd=['日','一','二','三','四','五','六'][now.getDay()];
   let lines = [];
@@ -79,6 +80,8 @@ function buildTextPromo(){
     let priceTag = '💰 ¥'+finalPrice.toFixed(2);
 
     lines.push((item.emoji||'📦')+' '+(item.title||'')+' '+priceTag);
+    // 有券链接就带上
+    if(item.coupon_link) lines.push('🎫 '+item.coupon_link);
     lines.push('🛒 '+item.link);
     lines.push('');
   });
