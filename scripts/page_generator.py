@@ -80,7 +80,7 @@ def format_item(item):
         "tags": tags,
         "meta": meta,
         "link": item.get("link", ""),
-        "coupon_link": "",
+        "coupon_link": item.get("coupon_link", ""),
         "category": item.get("category", "其他"),
         "discount_pct": discount_pct,
         "sales_30d": item.get("sales_30d", 0),

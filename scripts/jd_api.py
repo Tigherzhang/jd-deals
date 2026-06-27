@@ -262,17 +262,20 @@ class JdUnionAPI:
             display_price = real_price if real_price > 0 else price
 
             # 券后价计算：
-            # 展示页面售价 price，同时展示券信息让消费者自己判断
-            # 不用 purchasePrice（含平台补贴/新人优惠，不可靠）
+            # 遍历所有优惠券，找出 quota <= display_price 的可用券
+            # 取可用券中 discount 最大的那张
+            # 不用 thresholdPrice（= purchaseNum * price，是购买总价，不是券门槛）
+            # 不用 purchasePrice（含平台补贴/新人优惠，不可控）
             # 不用 lowestCouponPrice（可能是多件叠加价）
             coupon_price = None
-            if coupon_amount > 0 and threshold_price == 0:
-                # 无门槛券
-                coupon_price = max(display_price - coupon_amount, 0)
-            elif coupon_amount > 0 and threshold_price > 0 and threshold_price <= display_price:
-                # 有门槛但门槛<=商品价，券可用
-                coupon_price = max(display_price - coupon_amount, 0)
-            # 否则券不可用或不显示
+            best_usable_discount = 0
+            for cp in coupon_list:
+                quota = float(cp.get("quota", 0))
+                discount = float(cp.get("discount", 0))
+                if quota <= display_price and discount > best_usable_discount:
+                    best_usable_discount = discount
+            if best_usable_discount > 0:
+                coupon_price = max(display_price - best_usable_discount, 0)
 
             # 原价 = API 原始价（京粉 API priceInfo.price 即京东页面售价）
             # 不再用 thresholdPrice（券门槛，不是商品原价）或 price*1.3（虚假膨胀）
