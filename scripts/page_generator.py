@@ -131,7 +131,6 @@ def generate_text_promo(items):
         lines.append("")
 
     lines.append("━━━━━━━━━━━━")
-    lines.append("🔔 价格以京东实际为准 · 每日更新")
     return "\n".join(lines)
 
 

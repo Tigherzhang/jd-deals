@@ -136,7 +136,7 @@ def main():
     filtered = filter_products(all_items, push_config)
     print(f"🔍 筛选后 {len(filtered)} 条")
 
-    max_items = push_config.get("max_items", 10)
+    max_items = push_config.get("max_items", 15)
     selected = rank_and_select(filtered, max_items)
     print(f"✅ 初步选取 {len(selected)} 条")
 
@@ -231,6 +231,71 @@ def main():
 
     print(f"\n🎉 完成！访问: {config['github']['pages_url']}")
     print("=" * 50)
+
+    shutdown_on_complete()
+
+
+def do_shutdown():
+    """执行关机，先试无密码，失败则弹窗要密码"""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["sudo", "-n", "shutdown", "-h", "now"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            return
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    # 弹窗要管理员密码
+    script = 'do shell script "sudo shutdown -h now" with administrator privileges'
+    subprocess.run(["osascript", "-e", script])
+
+
+def shutdown_on_complete():
+    """京东任务完成后提示关机（仅在此脚本中调用）"""
+    import shutil
+    has_tty = sys.stdout.isatty()
+
+    if not has_tty:
+        # 后台模式：不交互，直接等60秒关机
+        print("\n📱 后台模式：60秒后自动关机")
+        try:
+            time.sleep(60)
+            do_shutdown()
+        except KeyboardInterrupt:
+            print("✅ 已取消关机")
+        return
+
+    # 有终端：交互模式，倒计时确认后关机
+    print("\n" + "─" * 50)
+    print("✅ 京东 CPS 每日任务已完成，你可以去上班了！")
+    print("⏳ 60秒后自动关机，输入 'cancel' 取消")
+    print("─" * 50)
+
+    import threading
+    timer_done = [False]
+
+    def auto_shutdown():
+        time.sleep(60)
+        if not timer_done[0]:
+            do_shutdown()
+
+    t = threading.Thread(target=auto_shutdown, daemon=True)
+    t.start()
+
+    try:
+        response = input().strip().lower()
+        if response == 'cancel':
+            timer_done[0] = True
+            print("✅ 已取消关机，电脑保持运行")
+        else:
+            timer_done[0] = True
+            print("⏰ 正在关机...")
+            do_shutdown()
+    except KeyboardInterrupt:
+        timer_done[0] = True
+        print("✅ 已取消关机")
 
 
 if __name__ == "__main__":

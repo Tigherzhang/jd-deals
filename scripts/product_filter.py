@@ -106,15 +106,15 @@ def filter_products(items, config):
         if good_rate == 0:
             continue  # 无好评数据的跳过
 
-        # 月销量（食品放宽到300+，其他500+）
+        # 月销量（食品放宽到100+，其他300+）
         sales = item.get("sales_30d", 0)
-        min_sales = 300 if item.get("category") == "食品" else 500
+        min_sales = 100 if item.get("category") == "食品" else 300
         if sales < min_sales:
             continue
 
-        # 评价数（食品放宽到100+，其他200+）
+        # 评价数（食品放宽到50+，其他100+）
         good_count = item.get("good_count", 0)
-        min_comments = 100 if item.get("category") == "食品" else 200
+        min_comments = 50 if item.get("category") == "食品" else 100
         if good_count < min_comments:
             continue
 
@@ -214,7 +214,44 @@ def filter_products(items, config):
         if not is_dup:
             deduped3.append(item)
 
-    return deduped3
+    # 按评分排序（有_score的用评分，没有的用标题相似度保留顺序）
+    deduped3.sort(key=lambda x: x.get("_score", 0), reverse=True)
+
+    # ====== 品牌重复检测：同一品牌出现超过2次 → 只保留2个 ======
+    # 从标题中提取品牌名（支持中英文品牌）
+    def _extract_brand(title):
+        # 先试英文品牌：开头的大写字母+连字符
+        bm = re.match(r'^([A-Z][A-Za-z\-]+)', title)
+        if bm:
+            return bm.group(1).lower()
+        # 再试中文品牌：标题开头的中文词（2-4个字），后面跟空格或非中文字符
+        bm2 = re.match(r'^([一-龥]{2,4})(?:\s|·|【|（|\.|$)', title)
+        if bm2:
+            return bm2.group(1)
+        # 兜底：取前3个中文字
+        bm3 = re.match(r'([一-龥]{3})', title)
+        if bm3:
+            return bm3.group(1)
+        return title[:5]
+
+    brand_groups = {}
+    for d in deduped3:
+        brand = _extract_brand(d.get("title", ""))
+        if brand not in brand_groups:
+            brand_groups[brand] = []
+        brand_groups[brand].append(d)
+
+    final = []
+    for brand, items in brand_groups.items():
+        if len(items) <= 2:
+            final.extend(items)
+        else:
+            # 超过2个，只保留前2个（已在 filter 阶段排过序，取前面的）
+            final.extend(items[:2])
+            for extra in items[2:]:
+                print(f"  🚫 品牌去重: {extra['title'][:25]}... (品牌 '{brand}' 出现过多，保留前2个)")
+
+    return final
 
 
 def score_product(item):
@@ -246,12 +283,16 @@ def score_product(item):
     elif sales >= 1000:
         score += 8
 
-    # 品类偏好（10%）：食品/日用品 >> 化妆品/母婴/保健品 > 计生
+    # 品类偏好（15%）：食品/水果 > 日用品 >> 化妆品/母婴/保健品 > 计生
     cat = item.get("category", "")
-    if cat in ("食品", "日用品"):
+    if cat in ("食品", "水果"):
+        score += 15
+    elif cat == "日用品":
         score += 10
-    elif cat in ("化妆品", "母婴", "保健品"):
+    elif cat in ("化妆品", "母婴"):
         score += 5
+    elif cat == "保健品":
+        score += 4
     elif cat == "计生用品":
         score += 2
 
@@ -260,13 +301,19 @@ def score_product(item):
     if ratio > 0:
         score += min(ratio / 30, 1) * 10
 
+    # 有优惠券优先（10%）：一键领券 → 领完跳转商品页，转化最好
+    if item.get("coupon_amount", 0) > 0 and item.get("coupon_available", False):
+        score += 10
+    elif item.get("coupon_amount", 0) > 0:
+        score += 5
+
     return score
 
 
-def rank_and_select(items, max_items=20, min_items=10):
+def rank_and_select(items, max_items=15, min_items=10):
     """
     排序并选取前N条，保证品类多样性
-    食品+日用品优先（占主导），化妆品/保健品/母婴/计生作为补充（仅10%）
+    食品+水果+日用品优先（目标90%），化妆品/母婴/保健品/计生作为补充（最多10%）
     如果凑不足 max_items，降到 min_items 即可
     """
     if not items:
@@ -289,9 +336,9 @@ def rank_and_select(items, max_items=20, min_items=10):
 
     selected = []
 
-    # === 第一轮：优先填充食品和日用品（目标80%，但不强求） ===
-    primary_cats = ["食品", "日用品"]
-    primary_target = int(max_items * 0.8)
+    # === 第一轮：优先填充食品/水果/日用品（目标90%） ===
+    primary_cats = ["食品", "水果", "日用品"]
+    primary_target = int(max_items * 0.9)
 
     for item in real_deals:
         if len(selected) >= primary_target:

@@ -512,6 +512,7 @@ class JdUnionAPI:
                 "sales_30d": int(sales_30d) if sales_30d else 0,
                 "link": material_url,
                 "coupon_link": str(coupon_link) if coupon_link else "",
+                "coupon_available": bool(coupon_amount and coupon_link),
                 "category": category,
                 "channel": elite_id,
                 "excluded": is_excluded,  # 是否属于排除品类
