@@ -125,7 +125,7 @@ def generate_text_promo(items):
         lines.append(line)
 
         # 有券链接就带上
-        if coupon_link:
+        if coupon_link and item.get("coupon_available", False):
             lines.append(f"🎫 {coupon_link}")
         lines.append(f"🛒 {link}")
         lines.append("")

@@ -257,42 +257,47 @@ def filter_products(items, config):
 def score_product(item):
     """
     综合评分（满分100）
-    折扣40% + 好评20% + 销量20% + 品类10% + 佣金10%
+    折扣30% + 好评15% + 销量15% + 品类30% + 佣金10%
+    品类权重大幅提升：食品/日用品优先
     """
     score = 0
 
-    # 折扣力度（40%）
+    # 折扣力度（30%）
     orig = item.get("orig_price", 0)
     price = item.get("price", 0)
     if orig > 0 and price > 0:
         discount = (orig - price) / orig
-        score += discount * 40
+        score += discount * 30
 
-    # 好评率（20%）
+    # 好评率（15%）
     good_rate = item.get("good_rate", 90)
-    score += (good_rate / 100) * 20
+    score += (good_rate / 100) * 15
 
-    # 销量（20%）
+    # 销量（15%）
     sales = item.get("sales_30d", 0)
     if sales >= 50000:
-        score += 20
-    elif sales >= 10000:
-        score += 16
-    elif sales >= 5000:
-        score += 12
-    elif sales >= 1000:
-        score += 8
-
-    # 品类偏好（15%）：食品/水果 > 日用品 >> 化妆品/母婴/保健品 > 计生
-    cat = item.get("category", "")
-    if cat in ("食品", "水果"):
         score += 15
+    elif sales >= 10000:
+        score += 12
+    elif sales >= 5000:
+        score += 9
+    elif sales >= 1000:
+        score += 6
+
+    # 品类偏好（30%）：食品/日用品大幅加权，其他品类降低
+    cat = item.get("category", "")
+    if cat == "食品":
+        score += 30
     elif cat == "日用品":
-        score += 10
-    elif cat in ("化妆品", "母婴"):
+        score += 25
+    elif cat == "水果":
+        score += 28
+    elif cat == "化妆品":
+        score += 5
+    elif cat == "母婴":
         score += 5
     elif cat == "保健品":
-        score += 4
+        score += 3
     elif cat == "计生用品":
         score += 2
 
@@ -310,11 +315,10 @@ def score_product(item):
     return score
 
 
-def rank_and_select(items, max_items=15, min_items=10):
+def rank_and_select(items, max_items=10, min_items=8):
     """
-    排序并选取前N条，保证品类多样性
-    食品+水果+日用品优先（目标90%），化妆品/母婴/保健品/计生作为补充（最多10%）
-    如果凑不足 max_items，降到 min_items 即可
+    排序并选取前N条，优先食品和日用品
+    食品和日用品目标占比≥50%，总条数10条
     """
     if not items:
         return []
@@ -336,9 +340,9 @@ def rank_and_select(items, max_items=15, min_items=10):
 
     selected = []
 
-    # === 第一轮：优先填充食品/水果/日用品（目标90%） ===
+    # === 第一轮：优先填充食品/水果/日用品（目标70%） ===
     primary_cats = ["食品", "水果", "日用品"]
-    primary_target = int(max_items * 0.9)
+    primary_target = int(max_items * 0.7)
 
     for item in real_deals:
         if len(selected) >= primary_target:
@@ -350,16 +354,16 @@ def rank_and_select(items, max_items=15, min_items=10):
     food_count = sum(1 for i in selected if i.get("category") == "食品")
     home_count = sum(1 for i in selected if i.get("category") == "日用品")
 
-    # === 第二轮：补充辅助品类（化妆品/母婴/保健品/计生），最多10% ===
+    # === 第二轮：补充辅助品类（化妆品/母婴/保健品/计生），最多30% ===
     secondary_cats = ["化妆品", "母婴", "保健品", "计生用品"]
-    secondary_limit = max(int(max_items * 0.1), 1)  # 辅助品类最多10%，但至少1个
+    secondary_limit = max(int(max_items * 0.3), 1)  # 辅助品类最多30%
 
     secondary_count = 0
     for item in real_deals:
         if len(selected) >= max_items:
             break
         if item.get("category") in secondary_cats and item not in selected:
-            if secondary_count < secondary_limit or len(selected) < max_items:
+            if secondary_count < secondary_limit:
                 selected.append(item)
                 secondary_count += 1
 

@@ -54,7 +54,7 @@ def load_config():
         },
         "push": {
             "schedule_time": "08:30",
-            "max_items": int(os.environ.get("MAX_ITEMS", "15")),
+            "max_items": int(os.environ.get("MAX_ITEMS", "10")),
             "min_price": int(os.environ.get("MIN_PRICE", "10")),
             "max_price": int(os.environ.get("MAX_PRICE", "100")),
             "price_upper_limit": int(os.environ.get("PRICE_UPPER_LIMIT", "500")),
@@ -188,6 +188,9 @@ def main():
                 print(f"  ✅ {item['title'][:25]}... → {promo_link[:40]}")
             else:
                 print(f"  ⚠️ 转链失败: {item['title'][:25]}... 保留原链接")
+                # 转链失败时，清除可能过期的优惠券链接，避免用户点击报错
+                item.pop("coupon_link", None)
+                item["coupon_available"] = False
             time.sleep(0.2)
     else:
         print("\n⚠️ 未配置 site_id，跳过转链（链接不含佣金！）")
