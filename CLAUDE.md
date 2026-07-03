@@ -86,9 +86,21 @@ orig_price = price（仅当有券时显示划线价，无券时不显示）
 
 ## 去重策略
 
+### 核心原则
+**每个商品必须有可靠的 sku_id，否则去重体系完全失效。京粉API的 spuid 可能为空，必须通过多级fallback保证。**
+
+### sku_id 获取优先级（daily_job.py 步骤3）
+```
+1. jingfen链接 → 302跳转解析真实SKU
+2. item.jd.com链接 → 正则提取数字SKU
+3. spuid字段 → 京粉API返回的spuid（有时为空）
+4. convert_to_item返回的sku_id → pure_sku or item_id
+```
+任何一步失败都会打印警告日志，便于排查。
+
 ### 双重去重
 1. **SKU去重**: 从 `history.json` 读取最近140个SKU（约7天×20条），不在池中才保留
-2. **标题相似度去重**: 清理标题（去掉括号内容、空格）后 SequenceMatcher 相似度 >0.90 视为重复
+2. **标题相似度去重**: 清理标题（去掉括号内容、空格）后 SequenceMatcher 相似度 >0.80 视为重复
 
 ### 去重历史
 - `history.json`: 存 `sku_ids` 和 `titles` 各最近350条
@@ -163,3 +175,4 @@ orig_price = price（仅当有券时显示划线价，无券时不显示）
 - 2026-07-03: 无优惠券商品不再显示"券后¥XX"标签和划线价
 - 2026-07-03: 修复浮点数精度问题（round 到2位小数）
 - 2026-07-03: 修复杰士邦连续推送：resolve_real_sku加spuid fallback，保留spuid字段，标题相似度阈值0.90→0.80
+- 2026-07-03: 修复重复推送根因：确保每个商品必须有sku_id（3级fallback: 链接提取→spuid→已有值），否则去重完全失效
