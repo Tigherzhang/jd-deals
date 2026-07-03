@@ -115,10 +115,11 @@ class JdUnionAPI:
                 print(f"  [频道{elite_id}] API 返回错误: {msg}")
         return []
 
-    def resolve_real_sku(self, material_url):
+    def resolve_real_sku(self, material_url, spuid=""):
         """
         从 jingfen.jd.com/detail/xxx 链接302跳转中获取真实的 item.jd.com SKU ID
         京粉API的 spuid 不是 item.jd.com 的纯数字SKU，必须通过跳转获取
+        如果302跳转失败，fallback 到 spuid 字段（有时京粉API直接返回有效SKU）
         """
         import re, http.client
         if not material_url:
@@ -143,7 +144,12 @@ class JdUnionAPI:
             if sku_match:
                 return sku_match.group(1)
         except Exception as e:
-            print(f"  [SKU解析] 失败: {e}")
+            print(f"  [SKU解析] 302跳转失败: {e}")
+
+        # fallback: 直接用 spuid（京粉API有时会直接返回有效SKU）
+        if spuid and spuid.isdigit() and len(spuid) > 5:
+            return spuid
+
         return ""
 
     def get_promotion_link(self, material_url, site_id, sub_union_id=""):
@@ -502,6 +508,7 @@ class JdUnionAPI:
                 "good_count": int(comments) if comments else 0,
                 "sales_30d": int(sales_30d) if sales_30d else 0,
                 "link": material_url,
+                "spuid": str(raw.get("spuid") or ""),  # 保留spuid供SKU解析fallback
                 "coupon_link": str(coupon_link) if coupon_link else "",
                 "coupon_available": bool(coupon_amount and coupon_link),
                 "category": category,

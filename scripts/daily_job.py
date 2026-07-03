@@ -144,8 +144,9 @@ def main():
     print("\n🔗 解析真实商品链接...")
     for item in selected:
         material_url = item.get("link", "")
+        spuid = item.get("spuid", "")  # 从原始API数据保留的spuid
         if material_url and "jingfen.jd.com" in material_url:
-            real_sku = api.resolve_real_sku(material_url)
+            real_sku = api.resolve_real_sku(material_url, spuid)
             if real_sku:
                 item["link"] = f"https://item.jd.com/{real_sku}.html"
                 item["sku_id"] = real_sku
@@ -159,7 +160,10 @@ def main():
             sku_match = re.search(r'item\.jd\.com/(\d+)\.html', material_url)
             if sku_match:
                 item["sku_id"] = sku_match.group(1)
-            print(f"  ✓ {item['title'][:30]}... (已是正确格式)")
+            elif spuid and spuid.isdigit():
+                # fallback: 从spuid取SKU
+                item["sku_id"] = spuid
+            print(f"  ✓ {item['title'][:30]}... (已是正确格式, sku_id={item.get('sku_id')})")
 
     # ====== 步骤4: 浏览器验价 ======
     print("\n🔍 浏览器验价中...")

@@ -86,7 +86,7 @@ def filter_products(items, config):
             hist_clean = re.sub(r'[【\[（\(\<].*?([】\)\)>]|$)', '', hist_title).strip()
             hist_clean = re.sub(r'\s+', '', hist_clean)
             sim = SequenceMatcher(None, title_clean, hist_clean).ratio()
-            if sim > 0.90:
+            if sim > 0.80:
                 is_dup = True
                 break
         if is_dup:
