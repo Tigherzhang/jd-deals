@@ -77,6 +77,7 @@ def filter_products(items, config):
         if sku_id in pushed_ids:
             continue
         # 标题相似度去重（防止ID格式不一致导致漏判）
+        # 核心原则：sku_id可能为空（京粉API spuid缺失），标题去重是最后一道防线
         # 清理标题：去掉方括号/括号内容、空格
         title_clean = re.sub(r'[【\[（\(\<].*?([】\)\)>]|$)', '', item.get("title", "")).strip()
         title_clean = re.sub(r'\s+', '', title_clean)

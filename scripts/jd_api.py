@@ -309,7 +309,6 @@ class JdUnionAPI:
             # fallback: spuid 不是有效 SKU，不直接构建 item.jd.com 链接
             if not material_url and pure_sku:
                 material_url = f"https://item.jd.com/{pure_sku}.html"
-
             # 分类 - 扩展关键词匹配
             cat_info = raw.get("categoryInfo") or {}
             all_cats = (cat_info.get("cid1Name", "") + cat_info.get("cid2Name", "") + cat_info.get("cid3Name", ""))
@@ -495,7 +494,9 @@ class JdUnionAPI:
                     category = "日用品"
 
             return {
-                "sku_id": pure_sku or item_id,
+                # 核心原则：sku_id绝不能为空，否则去重完全失效
+                # 优先级：spuid(京粉ID) > item_id(联盟ID) > 从material_url提取 > 空
+                "sku_id": pure_sku or item_id or "",
                 "title": title,
                 "price": float(display_price) if display_price else 0,
                 "coupon_price": float(coupon_price) if coupon_price else 0,

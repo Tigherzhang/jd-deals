@@ -141,29 +141,47 @@ def main():
     print(f"✅ 初步选取 {len(selected)} 条")
 
     # ====== 步骤3: 解析真实SKU并修正链接 ======
+    # 核心原则：每个商品必须有sku_id，否则去重体系完全失效
     print("\n🔗 解析真实商品链接...")
     for item in selected:
         material_url = item.get("link", "")
         spuid = item.get("spuid", "")  # 从原始API数据保留的spuid
+        current_sku = item.get("sku_id", "")
+
+        # 尝试三种方式获取sku_id，优先级从高到低
+        sku_found = False
+
+        # 1. jingfen链接 → 302跳转解析真实SKU
         if material_url and "jingfen.jd.com" in material_url:
             real_sku = api.resolve_real_sku(material_url, spuid)
             if real_sku:
                 item["link"] = f"https://item.jd.com/{real_sku}.html"
                 item["sku_id"] = real_sku
+                sku_found = True
                 print(f"  ✅ {item['title'][:30]}... → {real_sku}")
-            else:
-                print(f"  ⚠️ 无法解析: {item['title'][:30]}...")
-            time.sleep(0.3)
-        else:
-            # 已经是 item.jd.com 格式
+
+        # 2. 已有item.jd.com链接 → 从链接提取
+        if not sku_found:
             import re
             sku_match = re.search(r'item\.jd\.com/(\d+)\.html', material_url)
             if sku_match:
                 item["sku_id"] = sku_match.group(1)
-            elif spuid and spuid.isdigit():
-                # fallback: 从spuid取SKU
-                item["sku_id"] = spuid
-            print(f"  ✓ {item['title'][:30]}... (已是正确格式, sku_id={item.get('sku_id')})")
+                sku_found = True
+
+        # 3. spuid fallback
+        if not sku_found and spuid and spuid.isdigit():
+            item["sku_id"] = spuid
+            sku_found = True
+
+        # 4. 已有sku_id（来自convert_to_item）
+        if not sku_found and current_sku:
+            sku_found = True
+
+        if sku_found:
+            print(f"  ✓ {item['title'][:30]}... (sku_id={item['sku_id']})")
+        else:
+            print(f"  ⚠️ 无法获取sku_id: {item['title'][:30]}... (将仅靠标题去重)")
+        time.sleep(0.3)
 
     # ====== 步骤4: 浏览器验价 ======
     print("\n🔍 浏览器验价中...")
