@@ -11,26 +11,22 @@ def format_item(item):
     """将商品格式化为网页显示的条目
 
     价格决策逻辑：
-    - purchasePrice（京东页面最终到手价）> coupon_price > price
-    - 优先用 purchasePrice（含券后价+限时折扣+满减+平台活动）
-    - 其次用 coupon_price（券面额抵扣后的价格）
-    - 最终统一用 _final_price 字段，确保三界面一致
+    - price = priceInfo.price（京东页面售价，唯一可信）
+    - coupon_price = price - couponDiscount（仅当 couponList 中有可用券时）
+    - final_price = coupon_price（有券）或 price（无券）
+    - 不用 purchasePrice（含平台补贴/限时折扣，不可控）
+    - 统一用 _final_price 字段，确保三界面一致
     """
     price = item.get("price", 0)
     coupon_price = item.get("coupon_price", 0)
-    purchase_price = item.get("purchase_price", 0)
     coupon_amt = item.get("coupon_amount", 0)
 
-    # 确定最终展示价格：优先 purchasePrice，其次 coupon_price
+    # 确定最终展示价格：有券后价才用券后价
     final_price = price
     show_orig = False
-    if purchase_price > 0 and purchase_price < price:
-        # 有京东页面最终到手价（含所有优惠）
-        final_price = purchase_price
-        show_orig = price
-    elif coupon_price > 0 and coupon_price < price:
-        # 有券后价
-        final_price = coupon_price
+    if coupon_price > 0 and coupon_price < price:
+        # 有可用优惠券
+        final_price = round(coupon_price, 2)
         show_orig = price
 
     # 折扣百分比（基于页面价 vs 最终价）
@@ -39,7 +35,7 @@ def format_item(item):
         discount_pct = round((price - final_price) / price * 100)
 
     tags = []
-    # 券后价标签
+    # 券后价标签（必须有券金额才显示）
     if show_orig and coupon_amt > 0:
         tags.append(f"券后¥{final_price:.0f}")
     # 折扣标签（20% off = 8折）
@@ -92,7 +88,7 @@ def format_item(item):
         "good_count": item.get("good_count", 0),
         "good_rate": item.get("good_rate", 0),
         # 统一价格字段（前端和后端都用这个）
-        "_final_price": final_price,
+        "_final_price": round(final_price, 2),
         # 验价元数据（内部字段，不展示到网页）
         "price_verified": item.get("price_verified", True),
         "verified_at": item.get("verified_at", ""),

@@ -262,15 +262,14 @@ class JdUnionAPI:
             display_price = real_price if real_price > 0 else price
 
             # 最终价格计算：
-            # 优先用 purchasePrice（京东页面实际展示的最终到手价）
-            # 包含：券后价 + 限时折扣 + 满减 + 平台活动
-            # 如果 purchasePrice == price 说明无额外优惠，用 price-coupon
-            # 不用 lowestCouponPrice（可能是多件叠加价）
+            # 只用 priceInfo.price（页面售价）作为基准价格
+            # 只有确认真的有优惠券时，才计算券后价
+            # 不用 purchasePrice（含平台补贴/限时折扣，不可控且不一定需要领券）
             final_price = display_price
             show_orig = False
             coupon_price = None
 
-            # 第1步：计算券可用时的券后价
+            # 计算券可用时的券后价（仅限 couponList 中的明确优惠券）
             best_usable_discount = 0
             for cp in coupon_list:
                 quota = float(cp.get("quota", 0))
@@ -279,18 +278,10 @@ class JdUnionAPI:
                     best_usable_discount = discount
             if best_usable_discount > 0:
                 coupon_price = max(display_price - best_usable_discount, 0)
-
-            # 第2步：用 purchasePrice 作为最终价格（如果比券后价更低）
-            if purchase_price > 0 and purchase_price < display_price:
-                # purchasePrice 有优惠，用它
-                final_price = purchase_price
-                show_orig = display_price  # 原价显示页面价
-            elif coupon_price is not None and coupon_price < display_price:
-                # 没有 purchasePrice 优惠，用券后价
                 final_price = coupon_price
-                show_orig = display_price
+                show_orig = display_price  # 有券时才显示划线价
 
-            # 原价 = 页面售价（用于展示划线价）
+            # 原价 = 页面售价（用于展示划线价，无券时等于 final_price）
             orig_price = display_price
 
             # 佣金
