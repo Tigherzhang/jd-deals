@@ -59,21 +59,22 @@
 
 ### 价格计算逻辑
 ```
-price = priceInfo.price（京东页面售价）
+price = priceInfo.price（京东页面售价，唯一可信数据源）
 coupon_amt = couponList[].discount（券面额，取可用券中最大的）
 coupon_price = price - coupon_amt（券后价，仅当券可用时）
   券可用条件：couponList[].quota <= price
 _final_price = coupon_price（有可用券）或 price（无可用券）
+orig_price = price（仅当有券时显示划线价，无券时不显示）
 ```
 
 ### 关键字段说明
-- `priceInfo.price`: 京东页面售价 ✅ 可信
+- `priceInfo.price`: 京东页面售价 ✅ 唯一可信，作为基准价格
 - `priceInfo.lowestCouponPrice`: API最低券后价 ❌ 可能含多件叠加
-- `purchasePriceInfo.purchasePrice`: 含平台补贴/新人优惠 ❌ 不可控
+- `purchasePriceInfo.purchasePrice`: 含平台补贴/限时折扣/满减 ❌ 不可控，不一定需要领券，**不再作为最终价**
 - `purchasePriceInfo.thresholdPrice`: 购买数量总价（=price×purchaseNum）❌ 不是券门槛
 - `couponList[].quota`: 券门槛 ✅ 唯一可信
 - `couponList[].discount`: 券面额 ✅ 唯一可信
-- `couponList[].link`: 领券链接 ✅ 可信
+- `couponList[].link`: 领券链接 ✅ 可信（但有有效期，转链失败时需清除）
 - `purchaseNum`: 总是1（API不提供多件价格）
 
 ### 三界面价格
@@ -158,3 +159,6 @@ _final_price = coupon_price（有可用券）或 price（无可用券）
 - 2026-07-02: 总条数15→10，食品日用品目标占比70%
 - 2026-07-02: 转链失败时清除过期券链接，避免用户点击报错"优惠券已过期"
 - 2026-07-02: 文字推送仅显示 coupon_available=True 的有效券链接
+- 2026-07-03: 修复虚假划线价：弃用 purchasePrice（含平台补贴/限时折扣不可控），仅用 priceInfo.price + 明确优惠券计算最终价
+- 2026-07-03: 无优惠券商品不再显示"券后¥XX"标签和划线价
+- 2026-07-03: 修复浮点数精度问题（round 到2位小数）
