@@ -88,6 +88,26 @@ def main():
     with open(heartbeat_path, "a") as hf:
         hf.write(f"[START] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
+    # ====== 防重入锁：同一天只允许跑一次 ======
+    lock_file = os.path.join(LOG_DIR, ".daily.lock")
+    today = time.strftime("%Y-%m-%d")
+    if os.path.exists(lock_file):
+        with open(lock_file, "r") as lf:
+            locked_date = lf.read().strip()
+        if locked_date == today:
+            print(f"[⚠️] 今天已经跑过了（锁定日期: {locked_date}），跳过")
+            with open(heartbeat_path, "a") as hf:
+                hf.write(f"[SKIP:already-ran-today] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            return
+        else:
+            # 锁是昨天的，过期了，删除
+            os.remove(lock_file)
+
+    # 写入锁
+    with open(lock_file, "w") as lf:
+        lf.write(today)
+    print(f"[✓] 锁定: {today}")
+
     print("=" * 50)
     print(f"🛒 京东优惠精选 - 每日采集")
     print(f"📅 {time.strftime('%Y-%m-%d %H:%M:%S')}")
