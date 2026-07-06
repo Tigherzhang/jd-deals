@@ -119,14 +119,9 @@ def main():
             time.sleep(0.3)
 
     if not all_items:
-        print("\n⚠️ 未获取到任何商品！")
-        data = generate_data([])
-        save_data(data, os.path.join(PROJECT_DIR, "docs"))
-        # 即使无商品也推送，确保网页更新（显示"暂无优惠"）
-        print("\n📤 推送到 GitHub...")
-        git_push(PROJECT_DIR)
+        print("\n⚠️ 未获取到任何商品！跳过推送（保持上次数据不变）")
         with open(os.path.join(PROJECT_DIR, "logs", "heartbeat.log"), "a") as hf:
-            hf.write(f"[END:0items] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            hf.write(f"[END:0items-skipped] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         print(f"\n🎉 完成！访问: {config['github']['pages_url']}")
         return
 
@@ -195,7 +190,11 @@ def main():
     selected = verified
     print(f"  ✅ 验价通过 {len(selected)} 条, ❌ 淘汰 {len(failed)} 条")
     if not selected:
-        print("  ⚠️ 验价后无商品通过，仍推送空列表")
+        print("  ⚠️ 验价后无商品通过，跳过推送（保持上次数据不变）")
+        with open(os.path.join(PROJECT_DIR, "logs", "heartbeat.log"), "a") as hf:
+            hf.write(f"[END:0items-verified] {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        print(f"\n🎉 完成！访问: {config['github']['pages_url']}")
+        return
 
     # ====== 步骤4: 生成推广链接... ======
     if site_id:
