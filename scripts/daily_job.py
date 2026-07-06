@@ -261,7 +261,7 @@ def main():
 
 
 def do_shutdown():
-    """执行关机，先试无密码，失败则弹窗要密码"""
+    """执行关机，先试无密码，失败则报错不关机"""
     import subprocess
     try:
         result = subprocess.run(
@@ -270,56 +270,30 @@ def do_shutdown():
         )
         if result.returncode == 0:
             return
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    # 弹窗要管理员密码
-    script = 'do shell script "sudo shutdown -h now" with administrator privileges'
-    subprocess.run(["osascript", "-e", script])
+        print(f"[⚠️] 关机失败: {result.stderr.strip()}")
+    except subprocess.TimeoutExpired:
+        print("[⚠️] 关机超时")
+    except Exception as e:
+        print(f"[⚠️] 关机错误: {e}")
 
 
 def shutdown_on_complete():
-    """京东任务完成后提示关机（仅在此脚本中调用）"""
-    import shutil
-    has_tty = sys.stdout.isatty()
-
-    if not has_tty:
-        # 后台模式：不交互，直接等60秒关机
-        print("\n📱 后台模式：60秒后自动关机")
-        try:
-            time.sleep(60)
-            do_shutdown()
-        except KeyboardInterrupt:
-            print("✅ 已取消关机")
+    """仅定时任务（launchd）完成后关机，手动执行不关机
+    判断方式：检查环境变量 JD_PCS_DAILY_TASK
+    - launchd plist 设置了此变量 → 定时任务 → 60秒后关机
+    - 手动执行没有此变量 → 不关机
+    """
+    if os.environ.get("JD_PCS_DAILY_TASK") != "1":
+        # 手动执行
+        print("\n✅ 手动执行，不关机。如需关机请输入: sudo shutdown -h now")
         return
 
-    # 有终端：交互模式，倒计时确认后关机
-    print("\n" + "─" * 50)
-    print("✅ 京东 CPS 每日任务已完成，你可以去上班了！")
-    print("⏳ 60秒后自动关机，输入 'cancel' 取消")
-    print("─" * 50)
-
-    import threading
-    timer_done = [False]
-
-    def auto_shutdown():
-        time.sleep(60)
-        if not timer_done[0]:
-            do_shutdown()
-
-    t = threading.Thread(target=auto_shutdown, daemon=True)
-    t.start()
-
+    # 定时任务模式：后台执行，60秒后关机
+    print("\n📱 定时任务模式：60秒后自动关机")
     try:
-        response = input().strip().lower()
-        if response == 'cancel':
-            timer_done[0] = True
-            print("✅ 已取消关机，电脑保持运行")
-        else:
-            timer_done[0] = True
-            print("⏰ 正在关机...")
-            do_shutdown()
+        time.sleep(60)
+        do_shutdown()
     except KeyboardInterrupt:
-        timer_done[0] = True
         print("✅ 已取消关机")
 
 

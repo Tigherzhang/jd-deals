@@ -30,6 +30,23 @@ def save_history(history):
         pass
 
 
+def _extract_brand(title):
+    """从标题中提取品牌名"""
+    # 先试英文品牌：开头的大写字母+连字符
+    bm = re.match(r'^([A-Z][A-Za-z\-]+)', title)
+    if bm:
+        return bm.group(1).lower()
+    # 再试中文品牌：标题开头的中文词（2-4个字）
+    bm2 = re.match(r'^([一-龥]{2,4})(?:\s|·|【|（|\.|$)', title)
+    if bm2:
+        return bm2.group(1)
+    # 兜底：取前3个中文字
+    bm3 = re.match(r'([一-龥]{3})', title)
+    if bm3:
+        return bm3.group(1)
+    return title[:5]
+
+
 def filter_products(items, config):
     """
     筛选商品
@@ -91,6 +108,7 @@ def filter_products(items, config):
                 is_dup = True
                 break
         if is_dup:
+            print(f"  🚫 标题去重: {item.get('title', '')[:35]}... (sim>0.80)")
             continue
 
         # 折扣检查仅在 origin > price 时才做（现在 orig_price = price 默认无折扣）
@@ -220,21 +238,6 @@ def filter_products(items, config):
 
     # ====== 品牌重复检测：同一品牌出现超过2次 → 只保留2个 ======
     # 从标题中提取品牌名（支持中英文品牌）
-    def _extract_brand(title):
-        # 先试英文品牌：开头的大写字母+连字符
-        bm = re.match(r'^([A-Z][A-Za-z\-]+)', title)
-        if bm:
-            return bm.group(1).lower()
-        # 再试中文品牌：标题开头的中文词（2-4个字），后面跟空格或非中文字符
-        bm2 = re.match(r'^([一-龥]{2,4})(?:\s|·|【|（|\.|$)', title)
-        if bm2:
-            return bm2.group(1)
-        # 兜底：取前3个中文字
-        bm3 = re.match(r'([一-龥]{3})', title)
-        if bm3:
-            return bm3.group(1)
-        return title[:5]
-
     brand_groups = {}
     for d in deduped3:
         brand = _extract_brand(d.get("title", ""))
@@ -341,14 +344,24 @@ def rank_and_select(items, max_items=10, min_items=8):
 
     selected = []
 
-    # === 第一轮：优先填充食品/水果/日用品（目标70%） ===
-    primary_cats = ["食品", "水果", "日用品"]
-    primary_target = int(max_items * 0.7)
+    # === 第一轮：优先填充食品（目标5条），再日用品（目标2条）===
+    # 食品优先于日用品，食品日用品合计目标7条（70%）
+    primary_target = int(max_items * 0.7)  # 7条
+    food_target = int(max_items * 0.5)     # 5条食品
+    home_target = primary_target - food_target  # 2条日用品
 
+    # 先选食品（食品优先于日用品）
+    for item in real_deals:
+        if len([s for s in selected if s.get("category") == "食品"]) >= food_target:
+            break
+        if item.get("category") == "食品" and item not in selected:
+            selected.append(item)
+
+    # 再选日用品
     for item in real_deals:
         if len(selected) >= primary_target:
             break
-        if item.get("category") in primary_cats and item not in selected:
+        if item.get("category") == "日用品" and item not in selected:
             selected.append(item)
 
     # 食品和日用品各至少占一定比例
@@ -378,6 +391,41 @@ def rank_and_select(items, max_items=10, min_items=8):
     # 如果连 min_items 都凑不满，接受更少
     if len(selected) < min_items:
         print(f"  ⚠️ 最终仅选出 {len(selected)} 条商品（不足 {max_items} 条）")
+
+    # === 额外去重：同品牌+同商品名 7天内最多推2次 ===
+    # 同品牌同商品名 → 不重复；不同品牌同商品名 → 最多2次
+    # 商品名 = 标题去掉括号内容、空格后的字面内容
+    def _normalize_title(title):
+        """规范化标题：去掉括号内容、空格，用于精确比对"""
+        t = re.sub(r'[（(【\<].*?([）)】\>]|$)', '', title)
+        t = re.sub(r'\s+', '', t)
+        return t.strip()
+
+    history = load_history()
+    hist_titles = history.get("titles", [])
+
+    # 统计历史中每个规范化标题的出现次数
+    hist_title_counts = {}
+    for ht in hist_titles:
+        nt = _normalize_title(ht)
+        hist_title_counts[nt] = hist_title_counts.get(nt, 0) + 1
+
+    deduped = []
+    brand_title_seen = {}  # (brand, normalized_title) → 本次选中次数
+    for item in selected:
+        title = item.get("title", "")
+        norm = _normalize_title(title)
+        brand = _extract_brand(title)
+        group_key = (brand.lower(), norm)
+        # 该品牌+商品名在过去7天出现的次数 + 本次已选次数
+        total_count = hist_title_counts.get(norm, 0) + brand_title_seen.get(group_key, 0)
+        if total_count < 2:
+            deduped.append(item)
+            brand_title_seen[group_key] = brand_title_seen.get(group_key, 0) + 1
+        else:
+            print(f"  🚫 同品牌同商品名去重: {title[:30]}... ({brand}/{norm[:30]} 历史{hist_title_counts.get(norm,0)}次+本次{brand_title_seen.get(group_key,0)}次)")
+
+    selected = deduped
 
     # 移除评分字段
     for item in selected:
