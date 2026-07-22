@@ -82,7 +82,9 @@ function buildTextPromo(){
     lines.push((item.emoji||'📦')+' '+(item.title||'')+' '+priceTag);
     // 有券链接就带上
     if(item.coupon_link) lines.push('🎫 '+item.coupon_link);
-    lines.push('🛒 '+item.link);
+    // 有商品链接才加上，空链接则跳过（避免"商品链接不在推广中"导致整体失败）
+    if(item.link && item.link !== 'None') lines.push('🛒 '+item.link);
+    else lines.push('⚠️ 该商品链接不可用');
     lines.push('');
   });
   lines.push('━━━━━━━━━━━━');

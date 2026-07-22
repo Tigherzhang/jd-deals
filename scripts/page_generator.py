@@ -37,7 +37,7 @@ def format_item(item):
     tags = []
     # 券后价标签（必须有券金额才显示）
     if show_orig and coupon_amt > 0:
-        tags.append(f"券后¥{final_price:.0f}")
+        tags.append(f"券后¥{final_price:.2f}")
     # 折扣标签（20% off = 8折）
     if show_orig and discount_pct >= 20:
         actual_discount = round(10 - discount_pct / 10, 1)
@@ -120,8 +120,8 @@ def generate_text_promo(items):
         line = f"{emoji} {title} {price_tag}"
         lines.append(line)
 
-        # 有券链接就带上
-        if coupon_link and item.get("coupon_available", False):
+        # 有券链接就带上（不再依赖 coupon_available 字段，只要有 coupon_link 就显示）
+        if coupon_link:
             lines.append(f"🎫 {coupon_link}")
         lines.append(f"🛒 {link}")
         lines.append("")
