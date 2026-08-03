@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 .DS_Store
 /tmp/
+
+# 敏感凭证（登录 token，禁止提交）
+data/jd_cookies.json
+.browser_profile/
+.browser_profile_test2/
