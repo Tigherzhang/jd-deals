@@ -90,7 +90,7 @@ def format_item(item):
         # 统一价格字段（前端和后端都用这个）
         "_final_price": round(final_price, 2),
         # 验价元数据（内部字段，不展示到网页）
-        "price_verified": item.get("price_verified", True),
+        "price_verified": item.get("price_verified", False),  # 默认 False，未验证不标已验证
         "verified_at": item.get("verified_at", ""),
     }
 

@@ -15,7 +15,7 @@ sys.path.insert(0, SCRIPT_DIR)
 
 from jd_api import JdUnionAPI
 from jd_fetcher import verify_prices
-from product_filter import filter_products, rank_and_select, load_history, save_history
+from product_filter import filter_products, rank_and_select, load_history, save_history, _extract_product_type
 from page_generator import generate_data, save_data
 
 
@@ -202,13 +202,17 @@ def main():
     print("\n🔍 浏览器验价中...")
     verified, failed, logs = verify_prices(selected, tolerance=0.5)
     verified_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+    actually_verified = 0
     for item in verified:
-        item["price_verified"] = True
+        # 只有真正验到价格才标记 True，跳过/异常的保持原值（None 或 False）
+        if item.get("_page_price_checked"):
+            item["price_verified"] = True
+            actually_verified += 1
         item["verified_at"] = verified_at
     for log in logs:
         print(log)
     selected = verified
-    print(f"  ✅ 验价通过 {len(selected)} 条, ❌ 淘汰 {len(failed)} 条")
+    print(f"  ✅ 验价通过 {len(selected)} 条 (其中 {actually_verified} 条真实比对), ❌ 淘汰 {len(failed)} 条")
     if not selected:
         print("  ⚠️ 验价后无商品通过，跳过推送（保持上次数据不变）")
         with open(os.path.join(PROJECT_DIR, "logs", "heartbeat.log"), "a") as hf:
@@ -261,8 +265,14 @@ def main():
         title = item.get("title", "")
         if title:
             history.setdefault("titles", []).append(title)
-    history["sku_ids"] = history["sku_ids"][-350:]
-    history["titles"] = history.get("titles", [])[-350:]
+        # 保存品类核心词用于去重
+        product_type = _extract_product_type(title, item["category"])
+        if product_type:
+            history.setdefault("product_types", []).append(f"{item['category']}|{product_type}")
+    # 去重：同日重跑可能产生重复，用 dict 保持插入顺序
+    history["sku_ids"] = list(dict.fromkeys(history["sku_ids"]))[-350:]
+    history["titles"] = list(dict.fromkeys(history.get("titles", [])))[-350:]
+    history["product_types"] = list(dict.fromkeys(history.get("product_types", [])))[-140:]
     today = time.strftime("%Y-%m-%d")
     history.setdefault("dates", {})[today] = len(selected)
     save_history(history)
@@ -275,6 +285,21 @@ def main():
 
     print(f"\n🎉 完成！访问: {config['github']['pages_url']}")
     print("=" * 50)
+
+    # ====== 步骤7: 结果验证 ======
+    print("\n📋 自动核验结果...")
+    verify_script = os.path.join(os.path.dirname(__file__), "verify_daily_result.py")
+    if os.path.exists(verify_script):
+        import subprocess
+        result = subprocess.run(
+            ["python3", verify_script],
+            capture_output=True, text=True
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            print("⚠️ 验证发现问题，请检查上述输出")
+    else:
+        print("  ⚠️ 验证脚本不存在，跳过")
 
     shutdown_on_complete()
 
