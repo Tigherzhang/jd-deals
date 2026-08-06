@@ -172,7 +172,7 @@ def check_dedup_effectiveness(data, history):
         issues.append(f"发现相似标题: {len(title_dupes)}个")
         print(f"⚠️ 发现相似标题: {len(title_dupes)}个")
         for t1, t2, sim in title_dupes[:3]:
-            print(f"   - "{t1}..." vs "{t2}..." (相似度{sim:.2f})")
+            print(f"   - '{t1}...' vs '{t2}...' (相似度{sim:.2f})")
     else:
         print(f"✅ 今日商品与历史无标题重复")
     
