@@ -5,6 +5,8 @@
 """
 
 import json
+from difflib import SequenceMatcher
+import re
 import sys
 from pathlib import Path
 from collections import Counter
@@ -106,6 +108,86 @@ def main():
             if kw in title and cat not in ('保健品',):
                 issues.append(f"可疑分类: [{cat}] {title[:40]}... 含「{kw}」")
 
+
+def check_dedup_effectiveness(data, history):
+    """检查去重有效性"""
+    issues = []
+    
+    items = data['items']
+    total = len(items)
+    
+    print("\n=== 去重有效性检查 ===")
+    
+    # 1. 检查sku_id完整性
+    no_sku = [item for item in items if not item.get('sku_id')]
+    if no_sku:
+        issues.append(f"sku_id缺失: {len(no_sku)}/{total}个商品")
+        print(f"⚠️ sku_id缺失: {len(no_sku)}/{total}个商品")
+        for item in no_sku[:3]:
+            print(f"   - {item['title'][:40]}...")
+    else:
+        print(f"✅ sku_id完整性: {total}/{total}")
+    
+    # 2. 检查product_type覆盖率
+    # 需要从history中计算
+    product_types = history.get('product_types', [])
+    sku_ids = history.get('sku_ids', [])
+    
+    if len(product_types) < len(sku_ids) * 0.8:
+        issues.append(f"product_types覆盖率低: {len(product_types)}/{len(sku_ids)} ({len(product_types)/len(sku_ids)*100:.0f}%)")
+        print(f"⚠️ product_types覆盖率: {len(product_types)}/{len(sku_ids)} ({len(product_types)/len(sku_ids)*100:.0f}%)")
+    else:
+        print(f"✅ product_types覆盖率: {len(product_types)}/{len(sku_ids)} ({len(product_types)/len(sku_ids)*100:.0f}%)")
+    
+    # 3. 检查今日商品是否与历史重复
+    today_skus = set(item.get('sku_id', '') for item in items if item.get('sku_id'))
+    history_skus = set(sku_ids[-140:]) if sku_ids else set()
+    
+    dupes = today_skus & history_skus
+    if dupes:
+        issues.append(f"发现重复SKU: {dupes}")
+        print(f"❌ 发现重复SKU: {dupes}")
+    else:
+        print(f"✅ 今日商品与历史无SKU重复")
+    
+    # 4. 检查标题相似度
+    def clean_title(t):
+        t = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', t).strip()
+        t = re.sub(r'\s+', '', t)
+        return t
+    
+    today_titles = [clean_title(item['title']) for item in items]
+    history_titles = [clean_title(t) for t in history.get('titles', [])[-140:]]
+    
+    title_dupes = []
+    for i, t1 in enumerate(today_titles):
+        for t2 in history_titles:
+            if t1 and t2:
+                sim = SequenceMatcher(None, t1, t2).ratio()
+                if sim >= 0.80:
+                    title_dupes.append((items[i]['title'][:40], t2[:40], sim))
+                    break
+    
+    if title_dupes:
+        issues.append(f"发现相似标题: {len(title_dupes)}个")
+        print(f"⚠️ 发现相似标题: {len(title_dupes)}个")
+        for t1, t2, sim in title_dupes[:3]:
+            print(f"   - "{t1}..." vs "{t2}..." (相似度{sim:.2f})")
+    else:
+        print(f"✅ 今日商品与历史无标题重复")
+    
+    return issues
+
+    # 在main函数中调用
+    history_path = PROJECT_DIR / "docs" / "history.json"
+    history = {}
+    if history_path.exists():
+        with open(history_path) as f:
+            history = json.load(f)
+    
+    dedup_issues = check_dedup_effectiveness(data, history)
+    issues.extend(dedup_issues)
+    
     # 总结
     print()
     print("=" * 50)
