@@ -270,8 +270,8 @@ def main():
         if product_type:
             history.setdefault("product_types", []).append(f"{item['category']}|{product_type}")
     # 去重：同日重跑可能产生重复，用 dict 保持插入顺序
-    history["sku_ids"] = list(dict.fromkeys(history["sku_ids"]))[-350:]
-    history["titles"] = list(dict.fromkeys(history.get("titles", [])))[-350:]
+    history["sku_ids"] = list(dict.fromkeys(history["sku_ids"]))[-140:]
+    history["titles"] = list(dict.fromkeys(history.get("titles", [])))[-140:]
     history["product_types"] = list(dict.fromkeys(history.get("product_types", [])))[-140:]
     today = time.strftime("%Y-%m-%d")
     history.setdefault("dates", {})[today] = len(selected)

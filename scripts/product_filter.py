@@ -124,6 +124,12 @@ _PRODUCT_KEYWORDS_BY_CAT = {
         "冲饮", "咖啡", "牛奶", "酸奶", "冰淇淋", "五谷", "杂粮", "大米",
         "食用油", "橄榄油", "葵花籽油", "玉米油", "蜂蜜", "燕窝", "蜂胶",
         "杏干", "无花果干", "椰蓉", "椰汁", "椰浆",
+        # 滋补保健食品
+        "枸杞", "枸杞子", "原浆", "滋补", "蜂蜜", "蜂胶", "燕窝",
+        # 更多调味
+        "辣椒", "胡椒", "孜然", "香料", "味精", "鸡精",
+        # 更多零食
+        "膨化", "虾条", "薯条", "膨化食品",
     ],
     # --- 水果 ---
     "水果": [
@@ -326,6 +332,22 @@ def filter_products(items, config):
             all_skus = history.get("sku_ids", [])[-140:]
             if sku_id and sku_id in all_skus:
                 print(f"  🚫 SKU 去重: {title[:35]}... (sku={sku_id})")
+                continue
+            # 标题相似度去重（最后防线）
+            # 核心原则：sku_id可能为空，title去重是最后一道防线
+            title_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', title).strip()
+            title_clean = re.sub(r'\s+', '', title_clean)
+            hist_titles = history.get("titles", [])[-140:]
+            is_dup = False
+            for hist_title in hist_titles:
+                hist_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', hist_title).strip()
+                hist_clean = re.sub(r'\s+', '', hist_clean)
+                sim = SequenceMatcher(None, title_clean, hist_clean).ratio()
+                if sim >= 0.80:
+                    print(f"  🚫 标题去重: {title[:35]}... (相似度{sim:.2f})")
+                    is_dup = True
+                    break
+            if is_dup:
                 continue
 
         # 折扣检查
