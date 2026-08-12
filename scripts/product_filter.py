@@ -320,8 +320,9 @@ def filter_products(items, config):
             used_brands.add(brand)
 
         # 第一道防线：SKU精确匹配（最可靠，覆盖率100%）
+        # 核心原则：每个商品必须有sku_id，否则无法准确去重
         sku_id = item.get("sku_id", "")
-        all_skus = history.get("sku_ids", [])[-140:]
+        all_skus = history.get("sku_ids", [])[-280:]  # 扩大到280条（14天）
         if sku_id and sku_id in all_skus:
             print(f"  🚫 SKU去重: {title[:35]}... (sku={sku_id})")
             continue
@@ -330,7 +331,7 @@ def filter_products(items, config):
         # 核心原则：SKU可能因不同渠道获取而略有差异，但标题相同说明是同一商品
         title_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', title).strip()
         title_clean = re.sub(r'\s+', '', title_clean)
-        hist_titles = history.get("titles", [])[-140:]
+        hist_titles = history.get("titles", [])[-280:]  # 扩大到280条（14天）
         is_dup = False
         for hist_title in hist_titles:
             hist_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', hist_title).strip()

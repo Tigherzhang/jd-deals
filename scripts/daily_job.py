@@ -148,6 +148,15 @@ def main():
 
     print(f"\n📊 共获取 {len(all_items)} 条原始商品")
 
+    # ====== 步骤1.5: 预过滤 - 移除历史SKU（确保选品新颖）======
+    # 核心原则：每天都是新去寻找新商品，而不是从以前找到的商品里面去选
+    from product_filter import load_history
+    history = load_history()
+    historical_skus = set(history.get("sku_ids", [])[-280:])
+    print(f"\n🔍 预过滤: 移除 {len([i for i in all_items if i.get('sku_id') in historical_skus])} 条历史商品")
+    all_items = [item for item in all_items if item.get("sku_id") not in historical_skus]
+    print(f"  剩余候选: {len(all_items)} 条")
+
     # ====== 步骤2: 解析真实SKU（必须在筛选前，确保去重准确性）======
     # 核心原则：每个商品必须有sku_id，否则去重体系完全失效
     print("\n🔗 解析真实商品链接...")
