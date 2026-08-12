@@ -286,8 +286,6 @@ def filter_products(items, config):
     price_upper = config.get("price_upper_limit", 500)
 
     history = load_history()
-    # 品类去重池：最近140条 ≈ 7天 × 20条
-    pushed_types = set(history.get("product_types", [])[-140:])
 
     filtered = []
     for item in items:
