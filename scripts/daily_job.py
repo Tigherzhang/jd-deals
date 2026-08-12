@@ -64,7 +64,8 @@ def load_config():
 
 def git_push(repo_dir):
     try:
-        subprocess.run(["git", "-C", repo_dir, "add", "docs/data.json"], check=True, timeout=10)
+        # 同时提交 data.json 和 history.json（history 对去重至关重要）
+        subprocess.run(["git", "-C", repo_dir, "add", "docs/data.json", "docs/history.json"], check=True, timeout=10)
         today = time.strftime("%Y-%m-%d")
         msg = f"更新商品数据 {today}"
         result = subprocess.run(["git", "-C", repo_dir, "commit", "-m", msg],
