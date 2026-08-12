@@ -148,10 +148,18 @@ def main():
 
     print(f"\n📊 共获取 {len(all_items)} 条原始商品")
 
-    # ====== 步骤2: 解析真实SKU（必须在筛选前，确保去重准确性）======
+    # ====== 步骤2: 筛选 ======
+    filtered = filter_products(all_items, push_config)
+    print(f"🔍 筛选后 {len(filtered)} 条")
+
+    max_items = push_config.get("max_items", 15)
+    selected = rank_and_select(filtered, max_items)
+    print(f"✅ 初步选取 {len(selected)} 条")
+
+    # ====== 步骤3: 解析真实SKU并修正链接 ======
     # 核心原则：每个商品必须有sku_id，否则去重体系完全失效
     print("\n🔗 解析真实商品链接...")
-    for item in all_items:
+    for item in selected:
         material_url = item.get("link", "")
         spuid = item.get("spuid", "")  # 从原始API数据保留的spuid
         current_sku = item.get("sku_id", "")
@@ -190,14 +198,6 @@ def main():
         else:
             print(f"  ⚠️ 无法获取sku_id: {item['title'][:30]}... (将仅靠标题去重)")
         time.sleep(0.3)
-
-    # ====== 步骤3: 筛选 ======
-    filtered = filter_products(all_items, push_config)
-    print(f"🔍 筛选后 {len(filtered)} 条")
-
-    max_items = push_config.get("max_items", 15)
-    selected = rank_and_select(filtered, max_items)
-    print(f"✅ 初步选取 {len(selected)} 条")
 
     # ====== 步骤4: 浏览器验价 ======
     print("\n🔍 浏览器验价中...")
