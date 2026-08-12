@@ -288,7 +288,6 @@ def filter_products(items, config):
     history = load_history()
     # 品类去重池：最近140条 ≈ 7天 × 20条
     pushed_types = set(history.get("product_types", [])[-140:])
-    print(f"    品类去重池: {len(pushed_types)} 个商品类型")
 
     filtered = []
     for item in items:
@@ -309,10 +308,9 @@ def filter_products(items, config):
         if price < min_price or price > price_upper:
             continue
 
-        # ====== 核心去重：提取商品类型 ======
+        # ====== 核心去重：SKU精确匹配 + 标题相似度（优先级从高到低）======
         title = item.get("title", "")
         category = item.get("category", "")
-        product_type = _extract_product_type(title, category)
 
         # 品牌去重：同品牌每天最多1个商品
         brand = _extract_brand(title)
@@ -323,34 +321,29 @@ def filter_products(items, config):
                 continue
             used_brands.add(brand)
 
-        if product_type:
-            dedup_key = f"{category}|{product_type}"
-            if dedup_key in pushed_types:
-                print(f"  🚫 品类去重: {title[:35]}... ({dedup_key})")
-                continue
-        else:
-            # 提取失败，fallback 到 SKU 去重
-            sku_id = item.get("sku_id", "")
-            all_skus = history.get("sku_ids", [])[-140:]
-            if sku_id and sku_id in all_skus:
-                print(f"  🚫 SKU 去重: {title[:35]}... (sku={sku_id})")
-                continue
-            # 标题相似度去重（最后防线）
-            # 核心原则：sku_id可能为空，title去重是最后一道防线
-            title_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', title).strip()
-            title_clean = re.sub(r'\s+', '', title_clean)
-            hist_titles = history.get("titles", [])[-140:]
-            is_dup = False
-            for hist_title in hist_titles:
-                hist_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', hist_title).strip()
-                hist_clean = re.sub(r'\s+', '', hist_clean)
-                sim = SequenceMatcher(None, title_clean, hist_clean).ratio()
-                if sim >= 0.80:
-                    print(f"  🚫 标题去重: {title[:35]}... (相似度{sim:.2f})")
-                    is_dup = True
-                    break
-            if is_dup:
-                continue
+        # 第一道防线：SKU精确匹配（最可靠，覆盖率100%）
+        sku_id = item.get("sku_id", "")
+        all_skus = history.get("sku_ids", [])[-140:]
+        if sku_id and sku_id in all_skus:
+            print(f"  🚫 SKU去重: {title[:35]}... (sku={sku_id})")
+            continue
+
+        # 第二道防线：标题相似度 >= 0.80（最后防线，防同品不同SKU）
+        # 核心原则：SKU可能因不同渠道获取而略有差异，但标题相同说明是同一商品
+        title_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', title).strip()
+        title_clean = re.sub(r'\s+', '', title_clean)
+        hist_titles = history.get("titles", [])[-140:]
+        is_dup = False
+        for hist_title in hist_titles:
+            hist_clean = re.sub(r'[【\[(\(<].*?([】\)\)>]|\$)', '', hist_title).strip()
+            hist_clean = re.sub(r'\s+', '', hist_clean)
+            sim = SequenceMatcher(None, title_clean, hist_clean).ratio()
+            if sim >= 0.80:
+                print(f"  🚫 标题去重: {title[:35]}... (相似度{sim:.2f})")
+                is_dup = True
+                break
+        if is_dup:
+            continue
 
         # 折扣检查
         orig = item.get("orig_price", 0)

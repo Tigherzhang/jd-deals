@@ -15,7 +15,7 @@ sys.path.insert(0, SCRIPT_DIR)
 
 from jd_api import JdUnionAPI
 from jd_fetcher import verify_prices
-from product_filter import filter_products, rank_and_select, load_history, save_history, _extract_product_type
+from product_filter import filter_products, rank_and_select, load_history, save_history
 from page_generator import generate_data, save_data
 
 
@@ -266,14 +266,9 @@ def main():
         title = item.get("title", "")
         if title:
             history.setdefault("titles", []).append(title)
-        # 保存品类核心词用于去重
-        product_type = _extract_product_type(title, item["category"])
-        if product_type:
-            history.setdefault("product_types", []).append(f"{item['category']}|{product_type}")
     # 去重：同日重跑可能产生重复，用 dict 保持插入顺序
     history["sku_ids"] = list(dict.fromkeys(history["sku_ids"]))[-140:]
     history["titles"] = list(dict.fromkeys(history.get("titles", [])))[-140:]
-    history["product_types"] = list(dict.fromkeys(history.get("product_types", [])))[-140:]
     today = time.strftime("%Y-%m-%d")
     history.setdefault("dates", {})[today] = len(selected)
     save_history(history)
